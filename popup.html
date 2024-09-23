@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>J-GLOBAL Scraper</title>
+</head>
+<body>
+  <h1>J-GLOBAL Scraper</h1>
+
+  <div>
+    <label for="projectDetails">Enter Project Details (Optional):</label>
+    <textarea id="projectDetails" rows="4" cols="50"></textarea>
+  </div>
+
+  <button id="scrapeButton">Scrape J-GLOBAL</button>
+  <div id="results"></div>
+
+  <script>
+    document.getElementById('scrapeButton').addEventListener('click', () => {
+      const projectDetails = document.getElementById('projectDetails').value;
+
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const currentTab = tabs[0];
+        chrome.runtime.sendMessage({
+          action: "scrapeJGLOBAL",
+          url: currentTab.url,
+          projectDetails: projectDetails
+        }, (response) => {
+          const resultsDiv = document.getElementById('results');
+          resultsDiv.innerHTML = '';
+
+          if (projectDetails) {
+            const projectDetailsP = document.createElement('p');
+            projectDetailsP.textContent = `Project Details: ${projectDetails}`;
+            resultsDiv.appendChild(projectDetailsP);
+          }
+
+          for (const key in response) {
+            const value = response[key];
+
+            if (key === 'Related URLs') {
+              const ul = document.createElement('ul');
+              value.forEach(url => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                a.href = url;
+                a.textContent = url;
+                a.target = "_blank";
+                li.appendChild(a);
+                ul.appendChild(li);
+              });
+              resultsDiv.appendChild(ul);
+            } else {
+              const p = document.createElement('p');
+              p.textContent = `${key}: ${Array.isArray(value) ? value.join(', ') : value}`;
+              resultsDiv.appendChild(p);
+            }
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
