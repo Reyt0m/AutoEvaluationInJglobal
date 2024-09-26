@@ -1,0 +1,29 @@
+{
+	"manifest_version": 3,
+	"name": "J-GLOBAL Scraper",
+	"version": "3",
+	"description": "Scrapes data from J-GLOBAL researcher pages.",
+	"permissions": [
+		"activeTab",
+		"storage",
+		"webRequest",
+		"declarativeNetRequest",
+		"tabs"
+
+	],
+	"content_scripts": [
+		{
+			"matches": [
+				"https://jglobal.jst.go.jp/search/researchers*"
+			],
+			"js": [
+				"background.js"
+			],
+			"run_at": "document_end",
+			"all_frames": true
+		}
+	],
+	"action": {
+		"default_popup": "popup.html"
+	}
+}
