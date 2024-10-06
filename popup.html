@@ -1,72 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>J-GLOBAL Scraper</title>
-  <style>
-    /* Add some basic styling */
-    #results {
-      margin-top: 20px;
-    }
-
-    .page-results {
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-
-    .page-results p {
-      margin: 5px 0;
-    }
-  </style>
+    <title>Gemini API Example</title>
 </head>
 <body>
-  <h1>J-GLOBAL Scraper</h1>
+    <input type="text" id="prompt" placeholder="Enter your prompt">
+    <button id="submit">Submit</button>
+    <div id="result"></div>
 
-  <div>
-    <label for="projectDetails">Enter Project Details (Optional):</label>
-    <textarea id="projectDetails" rows="4" cols="50"></textarea>
-  </div>
-
-  <button id="scrapeButton">Scrape J-GLOBAL</button>
-  <div id="results"></div>
-
-  <script>
-    document.getElementById('scrapeButton').addEventListener('click', () => {
-      const projectDetails = document.getElementById('projectDetails').value;
-
-      // Get all the target links from the page
-      const targetLinks = Array.from(document.querySelectorAll("div.listbox_title > a"))
-        .map(a => a.href);
-
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const currentTab = tabs[0];
-        chrome.runtime.sendMessage({
-          action: "scrapeJGLOBAL",
-          url: currentTab.url,
-          projectDetails: projectDetails,
-          targetLinks: targetLinks
-        }, (response) => {
-          const resultsDiv = document.getElementById('results');
-          resultsDiv.innerHTML = '';
-
-          // Display results from each page
-          response.forEach((pageResult, index) => {
-            const pageDiv = document.createElement('div');
-            pageDiv.classList.add('page-results');
-            pageDiv.innerHTML = `<h2>Page ${index + 1} Results:</h2>`;
-
-            for (const key in pageResult) {
-              const value = pageResult[key];
-              const p = document.createElement('p');
-              p.textContent = `${key}: ${Array.isArray(value) ? value.join(', ') : value}`;
-              pageDiv.appendChild(p);
-            }
-
-            resultsDiv.appendChild(pageDiv);
-          });
-        });
-      });
-    });
-  </script>
+    <script src="popup.js"></script>
 </body>
 </html>
