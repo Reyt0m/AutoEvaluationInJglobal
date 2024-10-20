@@ -1,24 +1,34 @@
-window.addEventListener("load", startCheck);
-window.addEventListener("hashchange", startCheck); // ページ読み込み時
 
-function startCheck() {
-  const jsInitCheckTimer = setInterval(jsLoaded, 1000);
-  function jsLoaded() {
-    if (document.querySelector("div.listbox_title > a") != null) {
-      clearInterval(jsInitCheckTimer);
-      if (localStorage.getItem("checked") == null) {
-        if (confirm("処理を開始しますか？")) {
-          localStorage.setItem("checked", "true");
-        } else {
-          console.log("処理を中止しました。");
-          return null;
-        }
-	}
-	main();
-	// navigateToNextPage();
-    }
-  }
-}
+
+
+// ページロード時に実行
+window.addEventListener("load", executeOnFirstPage);
+window.addEventListener("hashchange", executeOnFirstPage); // ページ読み込み時
+function executeOnFirstPage() {
+		// ulElement 内の全ての li を取得
+		const listItems = document.querySelectorAll('li');
+
+		listItems.forEach(li => {
+		  // pointer-events: none; が設定されているか確認
+		  if (li.style.pointerEvents === 'none') {
+			// li 内の span を取得
+			const spans = li.querySelectorAll('span');
+
+			spans.forEach(span => {
+			  // span の内容に "最後" が含まれているか確認
+			  if (span.textContent.includes('最初')) {
+				// ここに処理を記述
+				console.log("「最初」を含むspanが見つかりました:", span.textContent);
+				// 例: span の背景色を変える
+				if(confirm("処理を開始しますか？")){
+					main();
+				}
+			  }
+			});
+		  }
+		});
+	  }
+
 
 async function main(e) {
   const jsInitCheckTimer = setInterval(jsLoaded, 1000);
@@ -208,35 +218,40 @@ function clearLocalStorage() {
 //   document.body.removeChild(link);
 // }
 function CSVdownload() {
-	const researchers = JSON.parse(localStorage.getItem("Researchers"));
-	const result = researchers.map((researcher) => researcher);
+  const researchers = JSON.parse(localStorage.getItem("Researchers"));
+  const result = researchers.map((researcher) => researcher);
 
-	const csvRows = [];
-	csvRows.push(["name", "data"]); // ヘッダー行
+  const csvRows = [];
+  csvRows.push(["name", "data"]); // ヘッダー行
 
-	result.forEach((researcher) => {
-	  const name = researcher.name;
-	  const dataString = JSON.stringify(researcher.data, null, 2).replace(/\\t|\\n|\t|\n/g, ""); // 整形されたJSON文字列
+  result.forEach((researcher) => {
+    const name = researcher.name;
+    const dataString = JSON.stringify(researcher.data, null, 2).replace(
+      /\\t|\\n|\t|\n/g,
+      ""
+    ); // 整形されたJSON文字列
 
-	  // name と dataString を結合して CSV 行を作成 (ダブルクォートで囲み、エスケープ)
-	  csvRows.push([
-		`"${name.replace(/"/g, '""')}"`, // name をダブルクォートで囲み、エスケープ
-		`"${dataString.replace(/"/g, '""')}"`, // dataString をダブルクォートで囲み、エスケープ
-	  ]);
-	});
+    // name と dataString を結合して CSV 行を作成 (ダブルクォートで囲み、エスケープ)
+    csvRows.push([
+      `"${name.replace(/"/g, '""')}"`, // name をダブルクォートで囲み、エスケープ
+      `"${dataString.replace(/"/g, '""')}"`, // dataString をダブルクォートで囲み、エスケープ
+    ]);
+  });
 
-	const csvString = csvRows.join("\n"); // 行を改行で結合
+  const csvString = csvRows.join("\n"); // 行を改行で結合
 
-	const blob = new Blob(["\ufeff" + csvString], { type: "text/csv;charset=utf-8;" });
-	const link = document.createElement("a");
-	const url = URL.createObjectURL(blob);
-	link.href = url;
-	link.download = "localStorage.csv";
-	link.style.visibility = "hidden";
-	document.body.appendChild(link);
-	link.click();
-	document.body.removeChild(link);
-  }
+  const blob = new Blob(["\ufeff" + csvString], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = "localStorage.csv";
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 function navigateToNextPage() {
   const nextPageLink = document.querySelector(
@@ -247,9 +262,8 @@ function navigateToNextPage() {
     nextPageLink.click();
   } else {
     console.error("「次へ」へのリンクが見つかりませんでした。");
-    localStorage.clear("checked");
-	alert("処理を終了しました。");
-	return null;
+    alert("処理を終了しました。");
+    return null;
   }
 }
 
