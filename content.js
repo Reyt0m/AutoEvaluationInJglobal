@@ -154,59 +154,89 @@ function clearLocalStorage() {
   console.log("LocalStorageを消去しました。");
 }
 
+// function CSVdownload() {
+//   const researchers = JSON.parse(localStorage.getItem("Researchers")); // Researchers データを取得
+//   const result = researchers.map((researcher) => researcher); // 研究者データのみを抽出
+
+//   // CSV データを構築するための配列
+//   const csvRows = [];
+
+//   // ヘッダー行を追加
+//   csvRows.push(["name", "data"]);
+
+//   // 各研究者のデータを処理
+//   result.forEach((researcher) => {
+//     const name = researcher.name;
+//     const data = researcher.data;
+
+//     // data オブジェクト内の各プロパティを文字列に変換
+
+//     // data オブジェクト内の各プロパティを文字列に変換
+//     const dataValues = Object.values(data).map((value) => {
+//       if (Array.isArray(value)) {
+//         // 配列の場合は要素をカンマ区切りで結合
+//         return value.map((item) => item.replace(/\t|\n/g, "")); // \tと\nを削除
+//       } else {
+//         // 文字列の場合はそのまま返す
+//         return value.replace(/\t|\n/g, ""); // \tと\nを削除
+//       }
+//     });
+
+//     // name と dataValues を結合して CSV 行を作成
+//     const csvRow = [name, ...dataValues];
+//     csvRows.push(csvRow);
+//   });
+
+//   // CSV 文字列を作成
+//   const csvString = csvRows.map((row) => row.join(",")).join("\n");
+
+//   // 確認ダイアログを表示
+//   // Blobオブジェクトを作成
+//   const blob = new Blob(["\ufeff" + csvString], {
+//     type: "text/csv;charset=utf-8;",
+//   });
+//   // ダウンロードリンクを作成
+//   const link = document.createElement("a");
+//   const url = URL.createObjectURL(blob);
+//   link.setAttribute("href", url);
+//   link.setAttribute("download", "localStorage.csv");
+//   link.style.visibility = "hidden";
+//   document.body.appendChild(link);
+
+//   // リンクをクリックしてダウンロード
+//   link.click();
+//   document.body.removeChild(link);
+// }
 function CSVdownload() {
-  const researchers = JSON.parse(localStorage.getItem("Researchers")); // Researchers データを取得
-  const result = researchers.map((researcher) => researcher); // 研究者データのみを抽出
+	const researchers = JSON.parse(localStorage.getItem("Researchers"));
+	const result = researchers.map((researcher) => researcher);
 
-  // CSV データを構築するための配列
-  const csvRows = [];
+	const csvRows = [];
+	csvRows.push(["name", "data"]); // ヘッダー行
 
-  // ヘッダー行を追加
-  csvRows.push(["name", "data"]);
+	result.forEach((researcher) => {
+	  const name = researcher.name;
+	  const dataString = JSON.stringify(researcher.data, null, 2).replace(/\\t|\\n|\t|\n/g, ""); // 整形されたJSON文字列
 
-  // 各研究者のデータを処理
-  result.forEach((researcher) => {
-    const name = researcher.name;
-    const data = researcher.data;
+	  // name と dataString を結合して CSV 行を作成 (ダブルクォートで囲み、エスケープ)
+	  csvRows.push([
+		`"${name.replace(/"/g, '""')}"`, // name をダブルクォートで囲み、エスケープ
+		`"${dataString.replace(/"/g, '""')}"`, // dataString をダブルクォートで囲み、エスケープ
+	  ]);
+	});
 
-    // data オブジェクト内の各プロパティを文字列に変換
+	const csvString = csvRows.join("\n"); // 行を改行で結合
 
-    // data オブジェクト内の各プロパティを文字列に変換
-    const dataValues = Object.values(data).map((value) => {
-      if (Array.isArray(value)) {
-        // 配列の場合は要素をカンマ区切りで結合
-        return value.map((item) => item.replace(/\t|\n/g, "")); // \tと\nを削除
-      } else {
-        // 文字列の場合はそのまま返す
-        return value.replace(/\t|\n/g, ""); // \tと\nを削除
-      }
-    });
-
-    // name と dataValues を結合して CSV 行を作成
-    const csvRow = [name, ...dataValues];
-    csvRows.push(csvRow);
-  });
-
-  // CSV 文字列を作成
-  const csvString = csvRows.map((row) => row.join(",")).join("\n");
-
-  // 確認ダイアログを表示
-  // Blobオブジェクトを作成
-  const blob = new Blob(["\ufeff" + csvString], {
-    type: "text/csv;charset=utf-8;",
-  });
-  // ダウンロードリンクを作成
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.setAttribute("href", url);
-  link.setAttribute("download", "localStorage.csv");
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-
-  // リンクをクリックしてダウンロード
-  link.click();
-  document.body.removeChild(link);
-}
+	const blob = new Blob(["\ufeff" + csvString], { type: "text/csv;charset=utf-8;" });
+	const link = document.createElement("a");
+	const url = URL.createObjectURL(blob);
+	link.href = url;
+	link.download = "localStorage.csv";
+	link.style.visibility = "hidden";
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+  }
 
 function navigateToNextPage() {
   const nextPageLink = document.querySelector(
