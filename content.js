@@ -1,8 +1,24 @@
-// const targetElement = document.querySelector(".pagination")
-// ページ読み込み時と更新時に実行される処理
-window.addEventListener("load", main, false); // ページ読み込み時
-window.addEventListener("hashchange", main, false); // ページ読み込み時
-// targetElement.addEventListener("click", main, false); // 次に行くとき
+window.addEventListener("load", startCheck);
+window.addEventListener("hashchange", startCheck); // ページ読み込み時
+
+function startCheck() {
+  const jsInitCheckTimer = setInterval(jsLoaded, 1000);
+  function jsLoaded() {
+    if (document.querySelector("div.listbox_title > a") != null) {
+      clearInterval(jsInitCheckTimer);
+      if (localStorage.getItem("checked") == null) {
+        if (confirm("処理を開始しますか？")) {
+          localStorage.setItem("checked", "true");
+        } else {
+          console.log("処理を中止しました。");
+          return null;
+        }
+	}
+	main();
+	// navigateToNextPage();
+    }
+  }
+}
 
 async function main(e) {
   const jsInitCheckTimer = setInterval(jsLoaded, 1000);
@@ -125,11 +141,12 @@ async function main(e) {
       await Promise.all(promises);
 
       CSVdownload(); // confirmDownload() から CSVdownload() に変更
-        clearLocalStorage();
+      clearLocalStorage();
       navigateToNextPage();
     }
   }
 }
+
 function clearLocalStorage() {
   // localStorageを消すかの確認ダイアログを表示
   // OKが押されたらlocalStorageを消去
@@ -145,10 +162,7 @@ function CSVdownload() {
   const csvRows = [];
 
   // ヘッダー行を追加
-  csvRows.push([
-    "name",
-    "data",
-  ]);
+  csvRows.push(["name", "data"]);
 
   // 各研究者のデータを処理
   result.forEach((researcher) => {
@@ -203,6 +217,9 @@ function navigateToNextPage() {
     nextPageLink.click();
   } else {
     console.error("「次へ」へのリンクが見つかりませんでした。");
+    localStorage.clear("checked");
+	alert("処理を終了しました。");
+	return null;
   }
 }
 
