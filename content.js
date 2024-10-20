@@ -15,15 +15,18 @@ function executeOnFirstPage() {
 			const spans = li.querySelectorAll('span');
 
 			spans.forEach(span => {
-			  // span の内容に "最後" が含まれているか確認
 			  if (span.textContent.includes('最初')) {
 				// ここに処理を記述
 				console.log("「最初」を含むspanが見つかりました:", span.textContent);
 				// 例: span の背景色を変える
 				if(confirm("処理を開始しますか？")){
 					main();
+
 				}
+			  }else {
+				main();
 			  }
+
 			});
 		  }
 		});
