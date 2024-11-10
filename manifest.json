@@ -8,11 +8,6 @@
         "scripting"
     ],
 
-	"action": {
-	  "default_popup": "popup.html"
-	},
-	"background": {
-	},
 	"content_scripts": [
 	  {
 		"matches": ["https://jglobal.jst.go.jp/search/*"],
