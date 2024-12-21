@@ -17,6 +17,10 @@
 	  {
 		"matches": ["https://jglobal.jst.go.jp/search/*"],
 		"js": ["content.js"]
+	  },
+	  {
+		"matches": ["https://aistudio.google.com/app/prompts/*"],
+		"js": ["translate.js"]
 	  }
 	]
 
