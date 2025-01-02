@@ -22,11 +22,18 @@ async function processResearcherList() {
   );
   const targetLinks = targetElements.map((element) =>
     element.tagName === "A"
-      ? element.href
-      : element.closest(".listbox_info1")?.querySelector("a")?.href
+      ? element
+      : element.closest(".listbox_info1")?.querySelector("a")
   );
 
   const promises = targetLinks.map(async (link, index) => {
+    // console.log(researcherName)
+    let researcherName = link.href;
+    link = link.href;
+    const url = new URL(link);
+    const searchParams = new URLSearchParams(url.search);
+    researcherName = searchParams.get("JGLOBAL_ID");
+
     // listboxTitle を取得し、存在しない場合はエラー処理
     let listboxTitle =
       document.querySelectorAll("div.listbox_info1")[index] ||
@@ -36,8 +43,6 @@ async function processResearcherList() {
       console.error(`listboxTitle が取得できませんでした (index: ${index})`);
       return;
     }
-
-    const researcherName = link;
 
     // 詳細ボタン、詳細情報コンテナ、コメントエリアを作成
     const toggleButton = createToggleButton(index);
@@ -162,7 +167,6 @@ function extractResearcherDetails(doc, link) {
   return result;
 }
 
-
 // 研究キーワードを取得する関数
 function extractKeywords(doc) {
   const spanElement = Array.from(
@@ -170,7 +174,7 @@ function extractKeywords(doc) {
   ).find((span) => span.textContent.includes("研究キーワード"));
 
   if (!spanElement) {
-    console.error("研究キーワードを含むspanが見つかりませんでした");
+    // console.error("研究キーワードを含むspanが見つかりませんでした");
     return [];
   }
 
@@ -212,10 +216,10 @@ function extractListItemsAfterSpan(doc, spanStartText) {
   ).find((span) => span.textContent.trim().startsWith(spanStartText));
 
   if (!spanElement) {
-    console.error(
-      `指定されたテキストで始まるspanが見つかりませんでした:`,
-      spanStartText
-    );
+    // console.error(
+    //   `指定されたテキストで始まるspanが見つかりませんでした:`,
+    //   spanStartText
+    // );
     return [];
   }
 
@@ -249,10 +253,10 @@ function extractHrefAfterSpan(doc, spanText) {
   );
 
   if (!spanElement) {
-    console.error(
-      `指定されたテキストを含むspanが見つかりませんでした:`,
-      spanText
-    );
+    // console.error(
+    //   `指定されたテキストを含むspanが見つかりませんでした:`,
+    //   spanText
+    // );
     return "情報なし";
   }
 
@@ -272,10 +276,10 @@ function extractTextFromDivAfterSpanAndBr(doc, spanStartText) {
   ).find((span) => span.textContent.trim().startsWith(spanStartText));
 
   if (!spanElement) {
-    console.error(
-      `指定されたテキストで始まるspanが見つかりませんでした:`,
-      spanStartText
-    );
+    // console.error(
+    //   `指定されたテキストで始まるspanが見つかりませんでした:`,
+    //   spanStartText
+    // );
     return "情報なし";
   }
 
@@ -463,107 +467,109 @@ async function saveAllResearchersData() {
   // コンソールにデータを出力
   console.log("保存されたデータ:", allResearchersData);
   // sessionStorageからデータを取得し、CSVに変換してダウンロードする関数
-	// 1. sessionStorageからデータを取得
+  // 1. sessionStorageからデータを取得
 
-	if (!allResearchersData || allResearchersData.length === 0) {
-	  console.error("保存されたデータが見つかりません");
-	  return;
-	}
+  if (!allResearchersData || allResearchersData.length === 0) {
+    console.error("保存されたデータが見つかりません");
+    return;
+  }
 
-	// 2. CSVのヘッダー行を作成
-	const header = Object.keys(allResearchersData[0]).join(",");
-	console.log(header)
+  // 2. CSVのヘッダー行を作成
+  const header = Object.keys(allResearchersData[0]).join(",");
+  console.log(header);
 
-	// 3. CSVのデータ行を作成
-	const csvRows = allResearchersData.map(researcher =>
-	  Object.values(researcher)
-		.map(value => {
-			// 配列の場合は要素を"|"で結合
-			if (Array.isArray(value)) {
-			  return `"${value.join("|")}"`;
-			} else if (typeof value === 'string') {
-				// 文字列の場合はエスケープ処理
-				return `"${value.replace(/"/g, '""')}"`; // ダブルクォートをエスケープ
-			} else {
-			  return value;
-			}
-		})
-		.join(",")
-	);
+  // 3. CSVのデータ行を作成
+  const csvRows = allResearchersData.map((researcher) =>
+    Object.values(researcher)
+      .map((value) => {
+        // 配列の場合は要素を"|"で結合
+        if (Array.isArray(value)) {
+          return `"${value.join("|")}"`;
+        } else if (typeof value === "string") {
+          // 文字列の場合はエスケープ処理
+          return `"${value.replace(/"/g, '""')}"`; // ダブルクォートをエスケープ
+        } else {
+          return value;
+        }
+      })
+      .join(",")
+  );
 
-	// 4. ヘッダー行とデータ行を結合してCSVデータを作成
-	const csvData = [header, ...csvRows].join("\n");
+  // 4. ヘッダー行とデータ行を結合してCSVデータを作成
+  const csvData = [header, ...csvRows].join("\n");
 
-	// 5. CSVデータをBlobオブジェクトに変換
-	const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+  // 5. CSVデータをBlobオブジェクトに変換
+  const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
 
-	// 6. Blobオブジェクトからダウンロード用のURLを作成
-	const url = URL.createObjectURL(blob);
+  // 6. Blobオブジェクトからダウンロード用のURLを作成
+  const url = URL.createObjectURL(blob);
 
-	// 7. リンク要素を作成してダウンロードを実行
-	const link = document.createElement("a");
-	link.href = url;
-	link.setAttribute("download", "researchers_data.csv"); // ダウンロードするファイル名を指定
-	document.body.appendChild(link);
-	link.click();
+  // 7. リンク要素を作成してダウンロードを実行
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", "researchers_data.csv"); // ダウンロードするファイル名を指定
+  document.body.appendChild(link);
+  link.click();
 
-	// 8. 作成したリンク要素とURLを削除
-	document.body.removeChild(link);
-	URL.revokeObjectURL(url);
-	downloadResearchersDataAsTSV();
-
+  // 8. 作成したリンク要素とURLを削除
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  downloadResearchersDataAsTSV();
 }
 
 // sessionStorageからデータを取得し、タブ区切りファイル(.tsv)に変換してダウンロードする関数
 function downloadResearchersDataAsTSV() {
-	// 1. sessionStorageからデータを取得
-	const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
+  // 1. sessionStorageからデータを取得
+  const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
 
-	if (!allResearchersData || allResearchersData.length === 0) {
-	  console.error("保存されたデータが見つかりません");
-	  return;
-	}
-
-	// 2. TSVのヘッダー行を作成
-	const header = Object.keys(allResearchersData[0]).join("\t"); // タブで区切る
-
-	// 3. TSVのデータ行を作成
-	const tsvRows = allResearchersData.map(researcher =>
-	  Object.values(researcher)
-		.map(value => {
-		  // 配列の場合は要素を"|"で結合
-		  if (Array.isArray(value)) {
-			return `"${value.join("|")}"`;
-		  } else if (typeof value === 'string') {
-			// 文字列の場合はエスケープ処理（タブをスペースに置き換え）
-			return `"${value.replace(/"/g, '""').replace(/\t/g, ' ')}"`;
-		  } else {
-			return value;
-		  }
-		})
-		.join("\t") // タブで区切る
-	);
-
-	// 4. ヘッダー行とデータ行を結合してTSVデータを作成
-	const tsvData = [header, ...tsvRows].join("\n");
-
-	// 5. TSVデータをBlobオブジェクトに変換
-	const blob = new Blob([tsvData], { type: "text/tab-separated-values;charset=utf-8;" });
-
-	// 6. Blobオブジェクトからダウンロード用のURLを作成
-	const url = URL.createObjectURL(blob);
-
-	// 7. リンク要素を作成してダウンロードを実行
-	const link = document.createElement("a");
-	link.href = url;
-	link.setAttribute("download", "researchers_data.tsv"); // ダウンロードするファイル名を指定
-	document.body.appendChild(link);
-	link.click();
-
-	// 8. 作成したリンク要素とURLを削除
-	document.body.removeChild(link);
-	URL.revokeObjectURL(url);
+  if (!allResearchersData || allResearchersData.length === 0) {
+    console.error("保存されたデータが見つかりません");
+    return;
   }
+
+  // 2. TSVのヘッダー行を作成
+  const header = Object.keys(allResearchersData[0]).join("\t"); // タブで区切る
+
+  // 3. TSVのデータ行を作成
+  const tsvRows = allResearchersData.map(
+    (researcher) =>
+      Object.values(researcher)
+        .map((value) => {
+          // 配列の場合は要素を"|"で結合
+          if (Array.isArray(value)) {
+            return `"${value.join("|")}"`;
+          } else if (typeof value === "string") {
+            // 文字列の場合はエスケープ処理（タブをスペースに置き換え）
+            return `"${value.replace(/"/g, '""').replace(/\t/g, " ")}"`;
+          } else {
+            return value;
+          }
+        })
+        .join("\t") // タブで区切る
+  );
+
+  // 4. ヘッダー行とデータ行を結合してTSVデータを作成
+  const tsvData = [header, ...tsvRows].join("\n");
+
+  // 5. TSVデータをBlobオブジェクトに変換
+  const blob = new Blob([tsvData], {
+    type: "text/tab-separated-values;charset=utf-8;",
+  });
+
+  // 6. Blobオブジェクトからダウンロード用のURLを作成
+  const url = URL.createObjectURL(blob);
+
+  // 7. リンク要素を作成してダウンロードを実行
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", "researchers_data.tsv"); // ダウンロードするファイル名を指定
+  document.body.appendChild(link);
+  link.click();
+
+  // 8. 作成したリンク要素とURLを削除
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 // すべての btn_clear をクリックする関数
 function clickAllBtnClear() {
   const buttons = document.querySelectorAll("button.btn_clear");
