@@ -135,6 +135,7 @@ function extractResearcherDetails(doc, link) {
     "J-GLOBAL ID": extractTextContent(doc, ".info_number"),
     名前: extractTextContent(doc, ".search_detail_topbox_title"),
     URL: link,
+    ホームページURL: extractHrefAfterSpan(doc, "ホームページURL"),
     "所属機関・部署": extractAffiliation(doc),
     職名: extractJobTitle(doc),
     研究分野: extractTextContentFromLinks(
@@ -146,16 +147,16 @@ function extractResearcherDetails(doc, link) {
     学歴: extractListItemsAfterSpan(doc, "学歴"),
     学位: extractListItemsAfterSpan(doc, "学位"),
     Works: [], // 必要に応じて取得処理を追加
-    ホームページURL: extractHrefAfterSpan(doc, "ホームページURL"),
     競争的資金等の研究課題: extractListItemsAfterSpan(
       doc,
       "競争的資金等の研究課題"
     ),
-    "MISC ": extractListItemsAfterSpan(doc, "MISC"),
+    MISC: extractListItemsAfterSpan(doc, "MISC"),
     書籍: extractListItemsAfterSpan(doc, "書籍"),
     特許: extractListItemsAfterSpan(doc, "特許"),
     経歴: extractListItemsAfterSpan(doc, "経歴"),
     受賞: extractListItemsAfterSpan(doc, "受賞"),
+    委員歴: extractListItemsAfterSpan(doc, "委員歴"),
     所属学会: extractTextFromDivAfterSpanAndBr(doc, "所属学会"),
   };
   return result;
@@ -461,8 +462,108 @@ async function saveAllResearchersData() {
 
   // コンソールにデータを出力
   console.log("保存されたデータ:", allResearchersData);
+  // sessionStorageからデータを取得し、CSVに変換してダウンロードする関数
+	// 1. sessionStorageからデータを取得
+
+	if (!allResearchersData || allResearchersData.length === 0) {
+	  console.error("保存されたデータが見つかりません");
+	  return;
+	}
+
+	// 2. CSVのヘッダー行を作成
+	const header = Object.keys(allResearchersData[0]).join(",");
+	console.log(header)
+
+	// 3. CSVのデータ行を作成
+	const csvRows = allResearchersData.map(researcher =>
+	  Object.values(researcher)
+		.map(value => {
+			// 配列の場合は要素を"|"で結合
+			if (Array.isArray(value)) {
+			  return `"${value.join("|")}"`;
+			} else if (typeof value === 'string') {
+				// 文字列の場合はエスケープ処理
+				return `"${value.replace(/"/g, '""')}"`; // ダブルクォートをエスケープ
+			} else {
+			  return value;
+			}
+		})
+		.join(",")
+	);
+
+	// 4. ヘッダー行とデータ行を結合してCSVデータを作成
+	const csvData = [header, ...csvRows].join("\n");
+
+	// 5. CSVデータをBlobオブジェクトに変換
+	const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+
+	// 6. Blobオブジェクトからダウンロード用のURLを作成
+	const url = URL.createObjectURL(blob);
+
+	// 7. リンク要素を作成してダウンロードを実行
+	const link = document.createElement("a");
+	link.href = url;
+	link.setAttribute("download", "researchers_data.csv"); // ダウンロードするファイル名を指定
+	document.body.appendChild(link);
+	link.click();
+
+	// 8. 作成したリンク要素とURLを削除
+	document.body.removeChild(link);
+	URL.revokeObjectURL(url);
+	downloadResearchersDataAsTSV();
+
 }
 
+// sessionStorageからデータを取得し、タブ区切りファイル(.tsv)に変換してダウンロードする関数
+function downloadResearchersDataAsTSV() {
+	// 1. sessionStorageからデータを取得
+	const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
+
+	if (!allResearchersData || allResearchersData.length === 0) {
+	  console.error("保存されたデータが見つかりません");
+	  return;
+	}
+
+	// 2. TSVのヘッダー行を作成
+	const header = Object.keys(allResearchersData[0]).join("\t"); // タブで区切る
+
+	// 3. TSVのデータ行を作成
+	const tsvRows = allResearchersData.map(researcher =>
+	  Object.values(researcher)
+		.map(value => {
+		  // 配列の場合は要素を"|"で結合
+		  if (Array.isArray(value)) {
+			return `"${value.join("|")}"`;
+		  } else if (typeof value === 'string') {
+			// 文字列の場合はエスケープ処理（タブをスペースに置き換え）
+			return `"${value.replace(/"/g, '""').replace(/\t/g, ' ')}"`;
+		  } else {
+			return value;
+		  }
+		})
+		.join("\t") // タブで区切る
+	);
+
+	// 4. ヘッダー行とデータ行を結合してTSVデータを作成
+	const tsvData = [header, ...tsvRows].join("\n");
+
+	// 5. TSVデータをBlobオブジェクトに変換
+	const blob = new Blob([tsvData], { type: "text/tab-separated-values;charset=utf-8;" });
+
+	// 6. Blobオブジェクトからダウンロード用のURLを作成
+	const url = URL.createObjectURL(blob);
+
+	// 7. リンク要素を作成してダウンロードを実行
+	const link = document.createElement("a");
+	link.href = url;
+	link.setAttribute("download", "researchers_data.tsv"); // ダウンロードするファイル名を指定
+	document.body.appendChild(link);
+	link.click();
+
+	// 8. 作成したリンク要素とURLを削除
+	document.body.removeChild(link);
+	URL.revokeObjectURL(url);
+  }
 // すべての btn_clear をクリックする関数
 function clickAllBtnClear() {
   const buttons = document.querySelectorAll("button.btn_clear");
