@@ -130,11 +130,6 @@ async function fetchAndDisplayDetails(link, detailsDiv) {
 }
 
 // 研究者の詳細情報を抽出する関数
-// 研究者の詳細情報を抽出する関数
-// 研究者の詳細情報を抽出する関数
-// 研究者の詳細情報を抽出する関数
-// 研究者の詳細情報を抽出する関数
-// 研究者の詳細情報を抽出する関数
 function extractResearcherDetails(doc, link) {
   const result = {
     "J-GLOBAL ID": extractTextContent(doc, ".info_number"),
@@ -436,9 +431,11 @@ async function saveAllResearchersData() {
         const html = await response.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
         const researcherData = extractResearcherDetails(doc, link);
-
+		const url = new URL(link);
+		const searchParams = new URLSearchParams(url.search);
+		researcherName = searchParams.get("JGLOBAL_ID");
         // コメントを取得して研究者データに追加
-        const savedData = loadFromLocalStorage(link) || {};
+        const savedData = loadFromLocalStorage(researcherName) || {};
         researcherData["コメント"] = savedData["コメント"] || "";
 
         // タブ文字と改行文字を削除する処理を追加
@@ -466,61 +463,8 @@ async function saveAllResearchersData() {
 
   // コンソールにデータを出力
   console.log("保存されたデータ:", allResearchersData);
-  // sessionStorageからデータを取得し、CSVに変換してダウンロードする関数
   // 1. sessionStorageからデータを取得
-
-  if (!allResearchersData || allResearchersData.length === 0) {
-    console.error("保存されたデータが見つかりません");
-    return;
-  }
-
-  // 2. CSVのヘッダー行を作成
-  const header = Object.keys(allResearchersData[0]).join(",");
-  console.log(header);
-
-  // 3. CSVのデータ行を作成
-  const csvRows = allResearchersData.map((researcher) =>
-    Object.values(researcher)
-      .map((value) => {
-        // 配列の場合は要素を"|"で結合
-        if (Array.isArray(value)) {
-          return `"${value.join("|")}"`;
-        } else if (typeof value === "string") {
-          // 文字列の場合はエスケープ処理
-          return `"${value.replace(/"/g, '""')}"`; // ダブルクォートをエスケープ
-        } else {
-          return value;
-        }
-      })
-      .join(",")
-  );
-
-  // 4. ヘッダー行とデータ行を結合してCSVデータを作成
-  const csvData = [header, ...csvRows].join("\n");
-
-  // 5. CSVデータをBlobオブジェクトに変換
-  const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
-
-  // 6. Blobオブジェクトからダウンロード用のURLを作成
-  const url = URL.createObjectURL(blob);
-
-  // 7. リンク要素を作成してダウンロードを実行
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", "researchers_data.csv"); // ダウンロードするファイル名を指定
-  document.body.appendChild(link);
-  link.click();
-
-  // 8. 作成したリンク要素とURLを削除
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-  downloadResearchersDataAsTSV();
-}
-
-// sessionStorageからデータを取得し、タブ区切りファイル(.tsv)に変換してダウンロードする関数
-function downloadResearchersDataAsTSV() {
-  // 1. sessionStorageからデータを取得
-  const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
+//   const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
 
   if (!allResearchersData || allResearchersData.length === 0) {
     console.error("保存されたデータが見つかりません");
@@ -569,7 +513,9 @@ function downloadResearchersDataAsTSV() {
   // 8. 作成したリンク要素とURLを削除
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-}
+  if (confirm("このページのクリップを削除してもよいですか?")) {
+	clickAllBtnClear();
+  }}
 // すべての btn_clear をクリックする関数
 function clickAllBtnClear() {
   const buttons = document.querySelectorAll("button.btn_clear");
