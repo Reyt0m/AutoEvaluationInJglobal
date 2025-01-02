@@ -1,18 +1,14 @@
 {
 	"manifest_version": 3,
-	"name": "J-GLOBAL AI 評価",
-	"version": "1.0",
-	"description": "J-GLOBALの研究者情報をGemini AIで評価する",    "permissions": [
+	"name": "J-GLOBAL データ獲得",
+	"version": "2.0",
+	"description": "J-GLOBALの研究者情報を人が評価しやすくする",
+	"permissions": [
         "storage",
         "activeTab",
         "scripting"
     ],
 
-	"action": {
-	  "default_popup": "popup.html"
-	},
-	"background": {
-	},
 	"content_scripts": [
 	  {
 		"matches": ["https://jglobal.jst.go.jp/search/*"],
@@ -21,10 +17,6 @@
 	  {
 		"matches": ["https://jglobal.jst.go.jp/bookmark*"],
 		"js": ["content.js"]
-	  },
-	  {
-		"matches": ["https://aistudio.google.com/app/prompts/*"],
-		"js": ["translate.js"]
 	  }
 	]
 
