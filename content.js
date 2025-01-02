@@ -1,243 +1,371 @@
+// ページ読み込み時とハッシュ変更時に実行
+window.addEventListener("load", main);
+window.addEventListener("hashchange", main);
 
+async function main() {
+  const jsInitCheckTimer = setInterval(jsLoaded, 1000);
 
+  async function jsLoaded() {
+    if (document.querySelector("div.listbox_title > a, .t_105") != null) {
+      clearInterval(jsInitCheckTimer);
 
-// ページロード時に実行
-window.addEventListener("load", executeOnFirstPage);
-window.addEventListener("hashchange", executeOnFirstPage); // ページ読み込み時
-function executeOnFirstPage() {
-		// ulElement 内の全ての li を取得
-		const listItems = document.querySelectorAll('li');
-
-		listItems.forEach(li => {
-		  // pointer-events: none; が設定されているか確認
-		  if (li.style.pointerEvents === 'none') {
-			// li 内の span を取得
-			const spans = li.querySelectorAll('span');
-
-			spans.forEach(span => {
-			  if (span.textContent.includes('最初')) {
-				// ここに処理を記述
-				console.log("「最初」を含むspanが見つかりました:", span.textContent);
-				// 例: span の背景色を変える
-				if(confirm("処理を開始しますか？")){
-					main();
-
-				}
-			  }else {
-				main();
-			  }
-
-			});
-		  }
-		});
-	  }
-
-
-	  async function main(e) {
-		const jsInitCheckTimer = setInterval(jsLoaded, 1000);
-
-		async function jsLoaded() {
-		  if (document.querySelector("div.listbox_title > a") != null) {
-			clearInterval(jsInitCheckTimer);
-			const targetLinks = Array.from(
-			  document.querySelectorAll("div.listbox_title > a")
-			).map((a) => a.href);
-
-			const promises = targetLinks.map(async (link, index) => {
-			  const listboxTitle =
-				document.querySelectorAll("div.listbox_info1")[index];
-
-			  // 詳細ボタンの追加
-			  const toggleButton = document.createElement("button");
-			  toggleButton.textContent = `詳細 ${index + 1}`;
-			  toggleButton.style.marginBottom = "10px";
-
-			  const detailsDiv = document.createElement("div");
-			  detailsDiv.style.display = "none";
-
-			  // クリップボタンの取得とコメント用テキストエリアの追加
-			  const clipButton = listboxTitle.nextElementSibling;
-			  const commentTextArea = document.createElement("textarea");
-			  commentTextArea.placeholder = "コメントを入力...";
-			  commentTextArea.style.width = "80%";
-			  commentTextArea.style.height = "50px";
-			  commentTextArea.style.marginTop = "10px";
-			  clipButton.parentNode.insertBefore(commentTextArea, clipButton.nextSibling);
-
-			  // コメントをsessionStorageから読み込む
-			  const researcherName = link; // 研究者名をキーとして使用 (必要に応じて変更してください)
-			  const savedData = JSON.parse(sessionStorage.getItem(researcherName)) || {};
-			  commentTextArea.value = savedData["コメント"] || "";
-
-			  // コメントが変更されたらsessionStorageに保存
-			  commentTextArea.addEventListener("input", () => {
-				const dataToSave = { ...savedData, "コメント": commentTextArea.value };
-				sessionStorage.setItem(researcherName, JSON.stringify(dataToSave));
-			  });
-
-			  try {
-				const response = await fetch(link);
-				if (!response.ok) {
-				  throw new Error(`HTTP error! status: ${response.status}`);
-				}
-				const html = await response.text();
-				const parser = new DOMParser();
-				const doc = parser.parseFromString(html, "text/html");
-				const result = {};
-
-				// ... (詳細情報の取得コードはそのまま) ...
-
-				saveToLocalStorage(result["名前"], result);
-
-				for (const key in result) {
-				  const value = result[key];
-				  const p = document.createElement("p");
-				  p.textContent = `${key}: ${
-					Array.isArray(value) ? value.join(", ") : value
-				  }`;
-				  detailsDiv.appendChild(p);
-				}
-			  } catch (error) {
-				console.error(`リンク ${link} の取得に失敗しました:`, error);
-				detailsDiv.textContent = "詳細情報の取得に失敗しました。";
-			  }
-
-			  toggleButton.addEventListener("click", () => {
-				if (detailsDiv.style.display === "none") {
-				  detailsDiv.style.display = "block";
-				} else {
-				  detailsDiv.style.display = "none";
-				}
-			  });
-
-			  listboxTitle.appendChild(toggleButton);
-			  listboxTitle.appendChild(detailsDiv);
-			});
-
-			// すべての fetch が完了したら次の処理を実行
-			await Promise.all(promises);
-
-			CSVdownload(); // confirmDownload() から CSVdownload() に変更
-			clearLocalStorage();
-			navigateToNextPage();
-		  }
-		}
-	  }
-function clearLocalStorage() {
-  // localStorageを消すかの確認ダイアログを表示
-  // OKが押されたらlocalStorageを消去
-  localStorage.clear("Researchers");
-  console.log("LocalStorageを消去しました。");
+      await processResearcherList();
+      createSaveButton();
+    }
+  }
 }
 
-// function CSVdownload() {
-//   const researchers = JSON.parse(localStorage.getItem("Researchers")); // Researchers データを取得
-//   const result = researchers.map((researcher) => researcher); // 研究者データのみを抽出
-
-//   // CSV データを構築するための配列
-//   const csvRows = [];
-
-//   // ヘッダー行を追加
-//   csvRows.push(["name", "data"]);
-
-//   // 各研究者のデータを処理
-//   result.forEach((researcher) => {
-//     const name = researcher.name;
-//     const data = researcher.data;
-
-//     // data オブジェクト内の各プロパティを文字列に変換
-
-//     // data オブジェクト内の各プロパティを文字列に変換
-//     const dataValues = Object.values(data).map((value) => {
-//       if (Array.isArray(value)) {
-//         // 配列の場合は要素をカンマ区切りで結合
-//         return value.map((item) => item.replace(/\t|\n/g, "")); // \tと\nを削除
-//       } else {
-//         // 文字列の場合はそのまま返す
-//         return value.replace(/\t|\n/g, ""); // \tと\nを削除
-//       }
-//     });
-
-//     // name と dataValues を結合して CSV 行を作成
-//     const csvRow = [name, ...dataValues];
-//     csvRows.push(csvRow);
-//   });
-
-//   // CSV 文字列を作成
-//   const csvString = csvRows.map((row) => row.join(",")).join("\n");
-
-//   // 確認ダイアログを表示
-//   // Blobオブジェクトを作成
-//   const blob = new Blob(["\ufeff" + csvString], {
-//     type: "text/csv;charset=utf-8;",
-//   });
-//   // ダウンロードリンクを作成
-//   const link = document.createElement("a");
-//   const url = URL.createObjectURL(blob);
-//   link.setAttribute("href", url);
-//   link.setAttribute("download", "localStorage.csv");
-//   link.style.visibility = "hidden";
-//   document.body.appendChild(link);
-
-//   // リンクをクリックしてダウンロード
-//   link.click();
-//   document.body.removeChild(link);
-// }
-function CSVdownload() {
-  const researchers = JSON.parse(localStorage.getItem("Researchers"));
-  const result = researchers.map((researcher) => researcher);
-
-  const csvRows = [];
-  csvRows.push(["name", "data"]); // ヘッダー行
-
-  result.forEach((researcher) => {
-    const name = researcher.name;
-    const dataString = JSON.stringify(researcher.data, null, 2).replace(
-      /\\t|\\n|\t|\n/g,
-      ""
-    ); // 整形されたJSON文字列
-
-    // name と dataString を結合して CSV 行を作成 (ダブルクォートで囲み、エスケープ)
-    csvRows.push([
-      `"${name.replace(/"/g, '""')}"`, // name をダブルクォートで囲み、エスケープ
-      `"${dataString.replace(/"/g, '""')}"`, // dataString をダブルクォートで囲み、エスケープ
-    ]);
-  });
-
-  const csvString = csvRows.join("\n"); // 行を改行で結合
-
-  const blob = new Blob(["\ufeff" + csvString], {
-    type: "text/csv;charset=utf-8;",
-  });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.href = url;
-  link.download = "localStorage.csv";
-  link.style.visibility = "hidden";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-function navigateToNextPage() {
-  const nextPageLink = document.querySelector(
-    ".paging .pagination li:nth-last-child(2) a"
+// リンクごとに要素を作成
+async function processResearcherList() {
+  const targetElements = Array.from(
+    document.querySelectorAll("div.listbox_title > a, .t_105")
+  );
+  const targetLinks = targetElements.map((element) =>
+    element.tagName === "A"
+      ? element
+      : element.closest(".listbox_info1")?.querySelector("a")
   );
 
-  if (nextPageLink) {
-    nextPageLink.click();
-  } else {
-    console.error("「次へ」へのリンクが見つかりませんでした。");
-    alert("処理を終了しました。");
-    return null;
+  const promises = targetLinks.map(async (link, index) => {
+    // console.log(researcherName)
+    let researcherName = link.href;
+    link = link.href;
+    const url = new URL(link);
+    const searchParams = new URLSearchParams(url.search);
+    researcherName = searchParams.get("JGLOBAL_ID");
+
+    // listboxTitle を取得し、存在しない場合はエラー処理
+    let listboxTitle =
+      document.querySelectorAll("div.listbox_info1")[index] ||
+      document.querySelectorAll("div.box1 > table > tbody > tr")[index + 1];
+
+    if (!listboxTitle) {
+      console.error(`listboxTitle が取得できませんでした (index: ${index})`);
+      return;
+    }
+
+    // 詳細ボタン、詳細情報コンテナ、コメントエリアを作成
+    const toggleButton = createToggleButton(index);
+    const detailsDiv = createDetailsContainer();
+    const commentTextArea = createCommentTextArea(researcherName);
+
+    // 詳細情報の取得と表示
+    if (link) {
+      await fetchAndDisplayDetails(link, detailsDiv);
+    } else {
+      console.error("リンクが取得できませんでした。");
+      detailsDiv.textContent = "詳細情報の取得に失敗しました。";
+    }
+
+    // 要素の追加
+    appendElements(listboxTitle, toggleButton, detailsDiv, commentTextArea);
+  });
+
+  await Promise.all(promises);
+}
+
+// 詳細ボタンを作成する関数
+function createToggleButton(index) {
+  const toggleButton = document.createElement("button");
+  toggleButton.textContent = `詳細 ${index + 1}`;
+  toggleButton.style.marginBottom = "10px";
+  toggleButton.addEventListener("click", toggleDetails);
+  return toggleButton;
+}
+
+// 詳細ボタンのクリックイベントハンドラ
+function toggleDetails(event) {
+  const detailsDiv = event.target.nextElementSibling;
+  if (detailsDiv) {
+    detailsDiv.style.display =
+      detailsDiv.style.display === "none" ? "block" : "none";
   }
+}
+
+// 詳細情報のコンテナを作成する関数
+function createDetailsContainer() {
+  const detailsDiv = document.createElement("div");
+  detailsDiv.style.display = "none";
+  return detailsDiv;
+}
+
+// コメントエリアを作成し、データを読み込む関数
+function createCommentTextArea(researcherName) {
+  const commentTextArea = document.createElement("textarea");
+  commentTextArea.placeholder = "コメントを入力...";
+  commentTextArea.style.width = "80%";
+  commentTextArea.style.height = "50px";
+  commentTextArea.style.marginTop = "10px";
+
+  const savedData = loadFromLocalStorage(researcherName) || {};
+  commentTextArea.value = savedData["コメント"] || "";
+  commentTextArea.addEventListener("input", () => {
+    saveCommentToLocalStorage(researcherName, commentTextArea.value, savedData);
+  });
+
+  return commentTextArea;
+}
+
+// コメントをlocalStorageに保存する関数
+function saveCommentToLocalStorage(researcherName, comment, savedData) {
+  const dataToSave = { ...savedData, コメント: comment };
+  saveToLocalStorage(researcherName, dataToSave);
+}
+
+// 詳細情報を取得して表示する関数
+async function fetchAndDisplayDetails(link, detailsDiv) {
+  try {
+    const response = await fetch(link);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const html = await response.text();
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const result = extractResearcherDetails(doc, link);
+    displayDetails(result, detailsDiv);
+  } catch (error) {
+    console.error(`リンク ${link} の取得に失敗しました:`, error);
+    detailsDiv.textContent = "詳細情報の取得に失敗しました。";
+  }
+}
+
+// 研究者の詳細情報を抽出する関数
+// 研究者の詳細情報を抽出する関数
+// 研究者の詳細情報を抽出する関数
+// 研究者の詳細情報を抽出する関数
+// 研究者の詳細情報を抽出する関数
+// 研究者の詳細情報を抽出する関数
+function extractResearcherDetails(doc, link) {
+  const result = {
+    "J-GLOBAL ID": extractTextContent(doc, ".info_number"),
+    名前: extractTextContent(doc, ".search_detail_topbox_title"),
+    URL: link,
+    ホームページURL: extractHrefAfterSpan(doc, "ホームページURL"),
+    "所属機関・部署": extractAffiliation(doc),
+    職名: extractJobTitle(doc),
+    研究分野: extractTextContentFromLinks(
+      doc.querySelector(".indent_2line-1em")
+    ),
+    研究キーワード: extractKeywords(doc), // 修正
+    論文: extractListItemsAfterSpan(doc, "論文"),
+    "講演・口頭発表等": extractListItemsAfterSpan(doc, "講演・口頭発表等"),
+    学歴: extractListItemsAfterSpan(doc, "学歴"),
+    学位: extractListItemsAfterSpan(doc, "学位"),
+    Works: [], // 必要に応じて取得処理を追加
+    競争的資金等の研究課題: extractListItemsAfterSpan(
+      doc,
+      "競争的資金等の研究課題"
+    ),
+    MISC: extractListItemsAfterSpan(doc, "MISC"),
+    書籍: extractListItemsAfterSpan(doc, "書籍"),
+    特許: extractListItemsAfterSpan(doc, "特許"),
+    経歴: extractListItemsAfterSpan(doc, "経歴"),
+    受賞: extractListItemsAfterSpan(doc, "受賞"),
+    委員歴: extractListItemsAfterSpan(doc, "委員歴"),
+    所属学会: extractTextFromDivAfterSpanAndBr(doc, "所属学会"),
+  };
+  return result;
+}
+
+// 研究キーワードを取得する関数
+function extractKeywords(doc) {
+  const spanElement = Array.from(
+    doc.querySelectorAll("span.detail_item_title")
+  ).find((span) => span.textContent.includes("研究キーワード"));
+
+  if (!spanElement) {
+    // console.error("研究キーワードを含むspanが見つかりませんでした");
+    return [];
+  }
+
+  const divElement = spanElement.closest("div.indent_2line-1em");
+  if (!divElement) {
+    console.error("spanを包含するdivが見つかりませんでした");
+    return [];
+  }
+
+  // 子ノードをすべて取得し、テキストノードのみを抽出
+  const textNodes = Array.from(divElement.childNodes)
+    .filter(
+      (node) =>
+        node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== ""
+    )
+    .map((node) => node.textContent.trim().replace(/[\t\n,]/g, "")); // タブ、改行、カンマを削除
+
+  return textNodes;
+}
+
+// リンク要素からテキストコンテンツを抽出する関数（変更なし）
+function extractTextContentFromLinks(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll("a"))
+    .map((aElement) => {
+      let previousNode = aElement.previousSibling;
+      while (previousNode && previousNode.nodeType !== Node.TEXT_NODE) {
+        previousNode = previousNode.previousSibling;
+      }
+      return previousNode ? previousNode.textContent.trim() : "";
+    })
+    .filter((item) => item !== "");
+}
+
+// 特定のspanの後のbrの次のdivの中のulのリスト項目を抽出するヘルパー関数（変更なし）
+function extractListItemsAfterSpan(doc, spanStartText) {
+  const spanElement = Array.from(
+    doc.querySelectorAll("span.detail_item_title")
+  ).find((span) => span.textContent.trim().startsWith(spanStartText));
+
+  if (!spanElement) {
+    // console.error(
+    //   `指定されたテキストで始まるspanが見つかりませんでした:`,
+    //   spanStartText
+    // );
+    return [];
+  }
+
+  const brElement = spanElement.nextElementSibling;
+  if (!brElement || brElement.tagName !== "BR") {
+    console.error("spanの次の要素がbrタグではありません");
+    return [];
+  }
+
+  const divElement = brElement.nextElementSibling;
+  if (!divElement || divElement.tagName !== "DIV") {
+    console.error("brタグの次の要素がdivタグではありません");
+    return [];
+  }
+
+  const ulElement = divElement.querySelector("ul");
+  if (!ulElement) {
+    console.error("divの中のulが見つかりませんでした");
+    return [];
+  }
+
+  return Array.from(ulElement.querySelectorAll("li")).map((li) =>
+    li.textContent.trim().replace(/[\t\n]/g, "")
+  );
+}
+
+// 特定のテキストを含むspanタグの次のaタグのhref属性を抽出するヘルパー関数（変更なし）
+function extractHrefAfterSpan(doc, spanText) {
+  const spanElement = Array.from(doc.querySelectorAll("span")).find((span) =>
+    span.textContent.includes(spanText)
+  );
+
+  if (!spanElement) {
+    // console.error(
+    //   `指定されたテキストを含むspanが見つかりませんでした:`,
+    //   spanText
+    // );
+    return "情報なし";
+  }
+
+  const aElement = spanElement.nextElementSibling;
+  if (!aElement || aElement.tagName !== "A") {
+    console.error("spanの次の要素がaタグではありません");
+    return "情報なし";
+  }
+
+  return aElement.href;
+}
+
+// 特定のspanタグの後のbrタグの次のdivタグのテキスト内容を抽出する関数
+function extractTextFromDivAfterSpanAndBr(doc, spanStartText) {
+  const spanElement = Array.from(
+    doc.querySelectorAll("span.detail_item_title")
+  ).find((span) => span.textContent.trim().startsWith(spanStartText));
+
+  if (!spanElement) {
+    // console.error(
+    //   `指定されたテキストで始まるspanが見つかりませんでした:`,
+    //   spanStartText
+    // );
+    return "情報なし";
+  }
+
+  const brElement = spanElement.nextElementSibling;
+  if (!brElement || brElement.tagName !== "BR") {
+    console.error("spanの次の要素がbrタグではありません");
+    return "情報なし";
+  }
+
+  const divElement = brElement.nextElementSibling;
+  if (!divElement || divElement.tagName !== "DIV") {
+    console.error("brタグの次の要素がdivタグではありません");
+    return "情報なし";
+  }
+
+  return divElement.textContent.trim().replace(/[\t\n]/g, "");
+}
+// テキストコンテンツを抽出するヘルパー関数
+function extractTextContent(doc, selector) {
+  return doc.querySelector(selector)?.textContent.trim() || "情報なし";
+}
+
+// 所属機関・部署を抽出するヘルパー関数
+function extractAffiliation(doc) {
+  let affiliation =
+    doc.querySelector(".js_tooltip_search")?.textContent.trim() || "情報なし";
+  const aboutIndex = affiliation.indexOf("について");
+  if (aboutIndex !== -1) {
+    affiliation = affiliation.substring(0, aboutIndex);
+  }
+  return affiliation;
+}
+
+// 職名を抽出するヘルパー関数
+function extractJobTitle(doc) {
+  const element = doc.querySelector(
+    "#detail_v > div.contents > div > div.contents_in_main > div > span:nth-child(5)"
+  );
+  return element?.nextSibling?.textContent.trim() || "情報なし";
+}
+
+// リスト項目を抽出するヘルパー関数
+function extractListItems(doc, selector) {
+  return Array.from(doc.querySelectorAll(selector)).map((item) =>
+    item.textContent.trim()
+  );
+}
+
+// リンク要素からテキストコンテンツを抽出する関数
+function extractTextContentFromLinks(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll("a"))
+    .map((aElement) => {
+      let previousNode = aElement.previousSibling;
+      while (previousNode && previousNode.nodeType !== Node.TEXT_NODE) {
+        previousNode = previousNode.previousSibling;
+      }
+      return previousNode ? previousNode.textContent.trim() : "";
+    })
+    .filter((item) => item !== "");
+}
+
+// 詳細情報を表示する関数
+function displayDetails(result, detailsDiv) {
+  for (const key in result) {
+    const value = result[key];
+    const p = document.createElement("p");
+    p.innerHTML = Array.isArray(value)
+      ? `<br><strong>${key}:</strong> <br>${value.join("<br>")}`
+      : `<br><strong>${key}:</strong> <br>${value}`;
+    detailsDiv.appendChild(p);
+  }
+}
+
+// localStorage からデータを読み込む関数
+function loadFromLocalStorage(researcherName) {
+  const researchers = JSON.parse(localStorage.getItem("Researchers")) || [];
+  const researcherData = researchers.find(
+    (researcher) => researcher.name === researcherName
+  );
+  return researcherData ? researcherData.data : null;
 }
 
 // localStorage にデータを保存する関数
 function saveToLocalStorage(researcherName, data) {
-  let researchers = JSON.parse(localStorage.getItem("Researchers")) || []; // Researchers データを取得 (なければ空の配列)
-
-  // name がユニークになるように重複を削除
+  const researchers = JSON.parse(localStorage.getItem("Researchers")) || [];
   const seenNames = new Set();
   const uniqueResearchers = researchers.filter((researcher) => {
     if (!seenNames.has(researcher.name)) {
@@ -247,6 +375,205 @@ function saveToLocalStorage(researcherName, data) {
     return false;
   });
 
-  uniqueResearchers.push({ name: researcherName, data: data }); // 研究者名とデータをオブジェクトとして追加
-  localStorage.setItem("Researchers", JSON.stringify(uniqueResearchers)); // Researchers データを更新
+  const existingIndex = uniqueResearchers.findIndex(
+    (researcher) => researcher.name === researcherName
+  );
+  if (existingIndex > -1) {
+    uniqueResearchers[existingIndex].data = data;
+  } else {
+    uniqueResearchers.push({ name: researcherName, data: data });
+  }
+
+  localStorage.setItem("Researchers", JSON.stringify(uniqueResearchers));
+}
+
+// 要素を追加する関数
+function appendElements(parent, ...elements) {
+  elements.forEach((element) => {
+    parent.appendChild(element);
+  });
+}
+
+// 「全ページを保存」ボタンを作成する関数
+async function createSaveButton() {
+  const saveButton = document.createElement("button");
+  saveButton.textContent = "全ページを保存";
+  saveButton.style.marginBottom = "10px";
+
+  saveButton.addEventListener("click", async () => {
+    // すべての研究者情報を取得して保存
+    await saveAllResearchersData();
+    console.log("保存処理を実行");
+  });
+
+  const targetContainer = document.querySelector("div.box1");
+  if (targetContainer) {
+    targetContainer.parentNode.insertBefore(saveButton, targetContainer);
+  } else {
+    console.error("ボタンの挿入先が見つかりません。");
+  }
+}
+
+// すべての研究者情報を取得して保存する関数
+async function saveAllResearchersData() {
+  const targetLinks = Array.from(
+    document.querySelectorAll("div.listbox_title > a, .t_105")
+  ).map((element) =>
+    element.tagName === "A"
+      ? element.href
+      : element.closest(".listbox_info1")?.querySelector("a")?.href
+  );
+
+  let allResearchersData = [];
+
+  for (const link of targetLinks) {
+    if (link) {
+      try {
+        const response = await fetch(link);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const html = await response.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const researcherData = extractResearcherDetails(doc, link);
+
+        // コメントを取得して研究者データに追加
+        const savedData = loadFromLocalStorage(link) || {};
+        researcherData["コメント"] = savedData["コメント"] || "";
+
+        // タブ文字と改行文字を削除する処理を追加
+        for (const key in researcherData) {
+          if (typeof researcherData[key] === "string") {
+            researcherData[key] = researcherData[key].replace(/[\t\n]/g, "");
+          } else if (Array.isArray(researcherData[key])) {
+            researcherData[key] = researcherData[key].map((item) =>
+              typeof item === "string" ? item.replace(/[\t\n]/g, "") : item
+            );
+          }
+        }
+
+        allResearchersData.push(researcherData);
+      } catch (error) {
+        console.error(`リンク ${link} の取得に失敗しました:`, error);
+      }
+    } else {
+      console.error("リンクが取得できませんでした。");
+    }
+  }
+
+  // セッションストレージに保存
+  sessionStorage.setItem("saving", JSON.stringify(allResearchersData));
+
+  // コンソールにデータを出力
+  console.log("保存されたデータ:", allResearchersData);
+  // sessionStorageからデータを取得し、CSVに変換してダウンロードする関数
+  // 1. sessionStorageからデータを取得
+
+  if (!allResearchersData || allResearchersData.length === 0) {
+    console.error("保存されたデータが見つかりません");
+    return;
+  }
+
+  // 2. CSVのヘッダー行を作成
+  const header = Object.keys(allResearchersData[0]).join(",");
+  console.log(header);
+
+  // 3. CSVのデータ行を作成
+  const csvRows = allResearchersData.map((researcher) =>
+    Object.values(researcher)
+      .map((value) => {
+        // 配列の場合は要素を"|"で結合
+        if (Array.isArray(value)) {
+          return `"${value.join("|")}"`;
+        } else if (typeof value === "string") {
+          // 文字列の場合はエスケープ処理
+          return `"${value.replace(/"/g, '""')}"`; // ダブルクォートをエスケープ
+        } else {
+          return value;
+        }
+      })
+      .join(",")
+  );
+
+  // 4. ヘッダー行とデータ行を結合してCSVデータを作成
+  const csvData = [header, ...csvRows].join("\n");
+
+  // 5. CSVデータをBlobオブジェクトに変換
+  const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+
+  // 6. Blobオブジェクトからダウンロード用のURLを作成
+  const url = URL.createObjectURL(blob);
+
+  // 7. リンク要素を作成してダウンロードを実行
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", "researchers_data.csv"); // ダウンロードするファイル名を指定
+  document.body.appendChild(link);
+  link.click();
+
+  // 8. 作成したリンク要素とURLを削除
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  downloadResearchersDataAsTSV();
+}
+
+// sessionStorageからデータを取得し、タブ区切りファイル(.tsv)に変換してダウンロードする関数
+function downloadResearchersDataAsTSV() {
+  // 1. sessionStorageからデータを取得
+  const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
+
+  if (!allResearchersData || allResearchersData.length === 0) {
+    console.error("保存されたデータが見つかりません");
+    return;
+  }
+
+  // 2. TSVのヘッダー行を作成
+  const header = Object.keys(allResearchersData[0]).join("\t"); // タブで区切る
+
+  // 3. TSVのデータ行を作成
+  const tsvRows = allResearchersData.map(
+    (researcher) =>
+      Object.values(researcher)
+        .map((value) => {
+          // 配列の場合は要素を"|"で結合
+          if (Array.isArray(value)) {
+            return `"${value.join("|")}"`;
+          } else if (typeof value === "string") {
+            // 文字列の場合はエスケープ処理（タブをスペースに置き換え）
+            return `"${value.replace(/"/g, '""').replace(/\t/g, " ")}"`;
+          } else {
+            return value;
+          }
+        })
+        .join("\t") // タブで区切る
+  );
+
+  // 4. ヘッダー行とデータ行を結合してTSVデータを作成
+  const tsvData = [header, ...tsvRows].join("\n");
+
+  // 5. TSVデータをBlobオブジェクトに変換
+  const blob = new Blob([tsvData], {
+    type: "text/tab-separated-values;charset=utf-8;",
+  });
+
+  // 6. Blobオブジェクトからダウンロード用のURLを作成
+  const url = URL.createObjectURL(blob);
+
+  // 7. リンク要素を作成してダウンロードを実行
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", "researchers_data.tsv"); // ダウンロードするファイル名を指定
+  document.body.appendChild(link);
+  link.click();
+
+  // 8. 作成したリンク要素とURLを削除
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+// すべての btn_clear をクリックする関数
+function clickAllBtnClear() {
+  const buttons = document.querySelectorAll("button.btn_clear");
+  buttons.forEach((button) => {
+    button.click();
+  });
 }
