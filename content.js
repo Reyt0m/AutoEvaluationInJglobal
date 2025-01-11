@@ -46,19 +46,21 @@ async function processResearcherList() {
 
     // 詳細ボタン、詳細情報コンテナ、コメントエリアを作成
     const toggleButton = createToggleButton(index);
+	const displayDiv = createDisplayDiv(researcherName);
     const detailsDiv = createDetailsContainer();
     const commentTextArea = createCommentTextArea(researcherName);
 
     // 詳細情報の取得と表示
     if (link) {
-      await fetchAndDisplayDetails(link, detailsDiv);
+      await fetchAndDisplayDetails(link, detailsDiv,displayDiv);
     } else {
       console.error("リンクが取得できませんでした。");
       detailsDiv.textContent = "詳細情報の取得に失敗しました。";
     }
 
     // 要素の追加
-    appendElements(listboxTitle, toggleButton, detailsDiv, commentTextArea);
+    appendElements(listboxTitle,   displayDiv,toggleButton, detailsDiv,commentTextArea);
+    // appendElements(listboxTitle, detailsDiv, commentTextArea);
   });
 
   await Promise.all(promises);
@@ -67,9 +69,10 @@ async function processResearcherList() {
 // 詳細ボタンを作成する関数
 function createToggleButton(index) {
   const toggleButton = document.createElement("button");
-  toggleButton.textContent = `詳細 ${index + 1}`;
-  toggleButton.style.marginBottom = "10px";
-  toggleButton.addEventListener("click", toggleDetails);
+    // toggleButton.textContent = `詳細 ${index + 1}`;
+    toggleButton.textContent = `開閉`;
+    toggleButton.style.marginBottom = "10px";
+    toggleButton.addEventListener("click", toggleDetails);
   return toggleButton;
 }
 
@@ -81,11 +84,18 @@ function toggleDetails(event) {
       detailsDiv.style.display === "none" ? "block" : "none";
   }
 }
+//　デフォルト情報を表示するコンテナを作成する関数
+function createDisplayDiv() {
+
+	const displayDiv = document.createElement("div");
+	return displayDiv;
+}
+
 
 // 詳細情報のコンテナを作成する関数
 function createDetailsContainer() {
   const detailsDiv = document.createElement("div");
-  detailsDiv.style.display = "none";
+    detailsDiv.style.display = "none";
   return detailsDiv;
 }
 
@@ -113,7 +123,7 @@ function saveCommentToLocalStorage(researcherName, comment, savedData) {
 }
 
 // 詳細情報を取得して表示する関数
-async function fetchAndDisplayDetails(link, detailsDiv) {
+async function fetchAndDisplayDetails(link, detailsDiv,displayDiv) {
   try {
     const response = await fetch(link);
     if (!response.ok) {
@@ -123,6 +133,7 @@ async function fetchAndDisplayDetails(link, detailsDiv) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const result = extractResearcherDetails(doc, link);
     displayDetails(result, detailsDiv);
+	displayDefaultDetails(result, displayDiv);
   } catch (error) {
     console.error(`リンク ${link} の取得に失敗しました:`, error);
     detailsDiv.textContent = "詳細情報の取得に失敗しました。";
@@ -131,10 +142,12 @@ async function fetchAndDisplayDetails(link, detailsDiv) {
 
 // 研究者の詳細情報を抽出する関数
 function extractResearcherDetails(doc, link) {
+
+//   link = link.substring(0, link.indexOf("&"));
   const result = {
     "J-GLOBAL ID": extractTextContent(doc, ".info_number"),
     名前: extractTextContent(doc, ".search_detail_topbox_title"),
-    URL: link,
+    URL: removeQueryStringAndFragment(link),
     ホームページURL: extractHrefAfterSpan(doc, "ホームページURL"),
     "所属機関・部署": extractAffiliation(doc),
     職名: extractJobTitle(doc),
@@ -161,6 +174,20 @@ function extractResearcherDetails(doc, link) {
   };
   return result;
 }
+
+function removeQueryStringAndFragment(url) {
+
+	const questionIndex = url.indexOf('&');
+	if (questionIndex !== -1) {
+        return url.substring(0, questionIndex);
+	  }
+    const fragmentIndex = url.indexOf('#', questionIndex);
+        if(fragmentIndex !== -1){
+
+        return url.substring(0, fragmentIndex);
+	}
+	return url;
+  }
 
 // 研究キーワードを取得する関数
 function extractKeywords(doc) {
@@ -336,9 +363,36 @@ function extractTextContentFromLinks(container) {
     })
     .filter((item) => item !== "");
 }
+// デフォルト情報を表示する関数
+function displayDefaultDetails(result, detailsDiv) {
+  result = {
+	  競争的資金等の研究課題: result.競争的資金等の研究課題,
+    論文: result.論文,
+  };
+  for (const key in result) {
+    const value = result[key];
+    const p = document.createElement("p");
+    p.innerHTML = Array.isArray(value)
+      ? `<br><strong>${key}:</strong> <br>${value.join("<br>")}`
+      : `<br><strong>${key}:</strong> <br>${value}`;
+    detailsDiv.appendChild(p);
+  }
+}
 
 // 詳細情報を表示する関数
 function displayDetails(result, detailsDiv) {
+  result = {
+    URL: result.URL,
+    職名: result.職名,
+    研究分野: result.研究分野,
+    研究キーワード: result.研究キーワード,
+    論文: result.論文,
+    MISC: result.MISC,
+    書籍: result.書籍,
+    受賞: result.受賞,
+    委員歴: result.委員歴,
+    所属学会: result.所属学会,
+  };
   for (const key in result) {
     const value = result[key];
     const p = document.createElement("p");
@@ -431,9 +485,9 @@ async function saveAllResearchersData() {
         const html = await response.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
         const researcherData = extractResearcherDetails(doc, link);
-		const url = new URL(link);
-		const searchParams = new URLSearchParams(url.search);
-		researcherName = searchParams.get("JGLOBAL_ID");
+        const url = new URL(link);
+        const searchParams = new URLSearchParams(url.search);
+        researcherName = searchParams.get("JGLOBAL_ID");
         // コメントを取得して研究者データに追加
         const savedData = loadFromLocalStorage(researcherName) || {};
         researcherData["コメント"] = savedData["コメント"] || "";
@@ -464,7 +518,7 @@ async function saveAllResearchersData() {
   // コンソールにデータを出力
   console.log("保存されたデータ:", allResearchersData);
   // 1. sessionStorageからデータを取得
-//   const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
+  //   const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
 
   if (!allResearchersData || allResearchersData.length === 0) {
     console.error("保存されたデータが見つかりません");
@@ -514,8 +568,9 @@ async function saveAllResearchersData() {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
   if (confirm("このページのクリップを削除してもよいですか?")) {
-	clickAllBtnClear();
-  }}
+    clickAllBtnClear();
+  }
+}
 // すべての btn_clear をクリックする関数
 function clickAllBtnClear() {
   const buttons = document.querySelectorAll("button.btn_clear");
