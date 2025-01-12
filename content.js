@@ -59,7 +59,7 @@ async function processResearcherList() {
     }
 
     // 要素の追加
-    appendElements(listboxTitle,   displayDiv,toggleButton, detailsDiv,commentTextArea);
+    appendElements(listboxTitle,  displayDiv, detailsDiv, toggleButton,commentTextArea);
     // appendElements(listboxTitle, detailsDiv, commentTextArea);
   });
 
@@ -78,7 +78,7 @@ function createToggleButton(index) {
 
 // 詳細ボタンのクリックイベントハンドラ
 function toggleDetails(event) {
-  const detailsDiv = event.target.nextElementSibling;
+  const detailsDiv = event.target.previousSibling;
   if (detailsDiv) {
     detailsDiv.style.display =
       detailsDiv.style.display === "none" ? "block" : "none";
