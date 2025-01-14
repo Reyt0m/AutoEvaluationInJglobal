@@ -386,7 +386,6 @@ function displayDetails(result, detailsDiv) {
     職名: result.職名,
     研究分野: result.研究分野,
     研究キーワード: result.研究キーワード,
-    論文: result.論文,
     MISC: result.MISC,
     書籍: result.書籍,
     受賞: result.受賞,
