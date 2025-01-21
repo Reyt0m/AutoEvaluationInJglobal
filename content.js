@@ -46,20 +46,33 @@ async function processResearcherList() {
 
     // 詳細ボタン、詳細情報コンテナ、コメントエリアを作成
     const toggleButton = createToggleButton(index);
-	const displayDiv = createDisplayDiv(researcherName);
+    const displayDiv = createDisplayDiv(researcherName);
     const detailsDiv = createDetailsContainer();
     const commentTextArea = createCommentTextArea(researcherName);
 
     // 詳細情報の取得と表示
     if (link) {
-      await fetchAndDisplayDetails(link, detailsDiv,displayDiv);
+      result = await fetchAndDisplayDetails(link, detailsDiv, displayDiv);
+      if (result) {
+        const recentYears = checkRecentYears(result);
+        // 3 years以内に競争的資金等の研究課題、論文が存在しない場合は削除
+        if (!recentYears["競争的資金等の研究課題"] && !recentYears["論文"]) {
+          listboxTitle.parentElement.parentElement.remove();
+        }
+      }
     } else {
       console.error("リンクが取得できませんでした。");
       detailsDiv.textContent = "詳細情報の取得に失敗しました。";
     }
 
     // 要素の追加
-    appendElements(listboxTitle,  displayDiv, detailsDiv, toggleButton,commentTextArea);
+    appendElements(
+      listboxTitle,
+      displayDiv,
+      detailsDiv,
+      toggleButton,
+      commentTextArea
+    );
     // appendElements(listboxTitle, detailsDiv, commentTextArea);
   });
 
@@ -69,10 +82,10 @@ async function processResearcherList() {
 // 詳細ボタンを作成する関数
 function createToggleButton(index) {
   const toggleButton = document.createElement("button");
-    // toggleButton.textContent = `詳細 ${index + 1}`;
-    toggleButton.textContent = `開閉`;
-    toggleButton.style.marginBottom = "10px";
-    toggleButton.addEventListener("click", toggleDetails);
+  // toggleButton.textContent = `詳細 ${index + 1}`;
+  toggleButton.textContent = `開閉`;
+  toggleButton.style.marginBottom = "10px";
+  toggleButton.addEventListener("click", toggleDetails);
   return toggleButton;
 }
 
@@ -86,16 +99,14 @@ function toggleDetails(event) {
 }
 //　デフォルト情報を表示するコンテナを作成する関数
 function createDisplayDiv() {
-
-	const displayDiv = document.createElement("div");
-	return displayDiv;
+  const displayDiv = document.createElement("div");
+  return displayDiv;
 }
-
 
 // 詳細情報のコンテナを作成する関数
 function createDetailsContainer() {
   const detailsDiv = document.createElement("div");
-    detailsDiv.style.display = "none";
+  detailsDiv.style.display = "none";
   return detailsDiv;
 }
 
@@ -123,7 +134,7 @@ function saveCommentToLocalStorage(researcherName, comment, savedData) {
 }
 
 // 詳細情報を取得して表示する関数
-async function fetchAndDisplayDetails(link, detailsDiv,displayDiv) {
+async function fetchAndDisplayDetails(link, detailsDiv, displayDiv) {
   try {
     const response = await fetch(link);
     if (!response.ok) {
@@ -133,17 +144,19 @@ async function fetchAndDisplayDetails(link, detailsDiv,displayDiv) {
     const doc = new DOMParser().parseFromString(html, "text/html");
     const result = extractResearcherDetails(doc, link);
     displayDetails(result, detailsDiv);
-	displayDefaultDetails(result, displayDiv);
+    displayDefaultDetails(result, displayDiv);
+	return result;
+
   } catch (error) {
     console.error(`リンク ${link} の取得に失敗しました:`, error);
-    detailsDiv.textContent = "詳細情報の取得に失敗しました。";
+    // detailsDiv.textContent = "詳細情報の取得に失敗しました。";
+    return (displayDiv.textContent = "詳細情報の取得に失敗しました。");
   }
 }
 
 // 研究者の詳細情報を抽出する関数
 function extractResearcherDetails(doc, link) {
-
-//   link = link.substring(0, link.indexOf("&"));
+  //   link = link.substring(0, link.indexOf("&"));
   const result = {
     "J-GLOBAL ID": extractTextContent(doc, ".info_number"),
     名前: extractTextContent(doc, ".search_detail_topbox_title"),
@@ -175,19 +188,47 @@ function extractResearcherDetails(doc, link) {
   return result;
 }
 
-function removeQueryStringAndFragment(url) {
+function checkRecentYears(result) {
+  const currentYear = new Date().getFullYear();
+  const targetYears = [currentYear, currentYear - 1, currentYear - 2,currentYear - 3]; // 現在から過去3年
+  const output = {
+    競争的資金等の研究課題: false,
+    論文: false,
+  };
 
-	const questionIndex = url.indexOf('&');
-	if (questionIndex !== -1) {
-        return url.substring(0, questionIndex);
-	  }
-    const fragmentIndex = url.indexOf('#', questionIndex);
-        if(fragmentIndex !== -1){
-
-        return url.substring(0, fragmentIndex);
-	}
-	return url;
+  // 競争的資金等の研究課題
+  if (
+    result.競争的資金等の研究課題 &&
+    result.競争的資金等の研究課題.length > 0
+  ) {
+    const fundingText = result.競争的資金等の研究課題.join(" "); // 配列を文字列に結合
+    output["競争的資金等の研究課題"] = targetYears.some((year) =>
+      fundingText.includes(year.toString())
+    );
   }
+
+  // 論文
+  if (result.論文 && result.論文.length > 0) {
+    const paperText = result.論文.join(" "); // 配列を文字列に結合
+    output["論文"] = targetYears.some((year) =>
+      paperText.includes(year.toString())
+    );
+  }
+
+  return output;
+}
+
+function removeQueryStringAndFragment(url) {
+  const questionIndex = url.indexOf("&");
+  if (questionIndex !== -1) {
+    return url.substring(0, questionIndex);
+  }
+  const fragmentIndex = url.indexOf("#", questionIndex);
+  if (fragmentIndex !== -1) {
+    return url.substring(0, fragmentIndex);
+  }
+  return url;
+}
 
 // 研究キーワードを取得する関数
 function extractKeywords(doc) {
@@ -366,7 +407,7 @@ function extractTextContentFromLinks(container) {
 // デフォルト情報を表示する関数
 function displayDefaultDetails(result, detailsDiv) {
   result = {
-	  競争的資金等の研究課題: result.競争的資金等の研究課題,
+    競争的資金等の研究課題: result.競争的資金等の研究課題,
     論文: result.論文,
   };
   for (const key in result) {
