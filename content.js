@@ -66,13 +66,13 @@ async function processResearcherList() {
     }
 
     // 要素の追加
-    appendElements(
-      listboxTitle,
-      displayDiv,
-      detailsDiv,
-      toggleButton,
-      commentTextArea
-    );
+    // appendElements(
+    //   listboxTitle,
+    //   displayDiv,
+    //   detailsDiv,
+    //   toggleButton,
+    //   commentTextArea
+    // );
     // appendElements(listboxTitle, detailsDiv, commentTextArea);
   });
 
@@ -145,8 +145,7 @@ async function fetchAndDisplayDetails(link, detailsDiv, displayDiv) {
     const result = extractResearcherDetails(doc, link);
     displayDetails(result, detailsDiv);
     displayDefaultDetails(result, displayDiv);
-	return result;
-
+    return result;
   } catch (error) {
     console.error(`リンク ${link} の取得に失敗しました:`, error);
     // detailsDiv.textContent = "詳細情報の取得に失敗しました。";
@@ -190,7 +189,12 @@ function extractResearcherDetails(doc, link) {
 
 function checkRecentYears(result) {
   const currentYear = new Date().getFullYear();
-  const targetYears = [currentYear, currentYear - 1, currentYear - 2,currentYear - 3]; // 現在から過去3年
+  const targetYears = [
+    currentYear,
+    currentYear - 1,
+    currentYear - 2,
+    currentYear - 3,
+  ]; // 現在から過去3年
   const output = {
     競争的資金等の研究課題: false,
     論文: false,
@@ -495,7 +499,7 @@ async function createSaveButton() {
     console.log("保存処理を実行");
   });
 
-  const targetContainer = document.querySelector("div.box1");
+  const targetContainer = document.querySelector("div.box1,.contents_in_main");
   if (targetContainer) {
     targetContainer.parentNode.insertBefore(saveButton, targetContainer);
   } else {
@@ -518,6 +522,7 @@ async function saveAllResearchersData() {
   for (const link of targetLinks) {
     if (link) {
       try {
+		
         const response = await fetch(link);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -529,8 +534,8 @@ async function saveAllResearchersData() {
         const searchParams = new URLSearchParams(url.search);
         researcherName = searchParams.get("JGLOBAL_ID");
         // コメントを取得して研究者データに追加
-        const savedData = loadFromLocalStorage(researcherName) || {};
-        researcherData["コメント"] = savedData["コメント"] || "";
+        // const savedData = loadFromLocalStorage(researcherName) || {};
+        // researcherData["コメント"] = savedData["コメント"] || "";
 
         // タブ文字と改行文字を削除する処理を追加
         for (const key in researcherData) {
@@ -588,6 +593,7 @@ async function saveAllResearchersData() {
 
   // 4. ヘッダー行とデータ行を結合してTSVデータを作成
   const tsvData = [header, ...tsvRows].join("\n");
+  sendToGas(tsvData);
 
   // 5. TSVデータをBlobオブジェクトに変換
   const blob = new Blob([tsvData], {
@@ -607,9 +613,9 @@ async function saveAllResearchersData() {
   // 8. 作成したリンク要素とURLを削除
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-  if (confirm("このページのクリップを削除してもよいですか?")) {
-    clickAllBtnClear();
-  }
+//   if (confirm("このページのクリップを削除してもよいですか?")) {
+//     clickAllBtnClear();
+//   }
 }
 // すべての btn_clear をクリックする関数
 function clickAllBtnClear() {
@@ -617,4 +623,41 @@ function clickAllBtnClear() {
   buttons.forEach((button) => {
     button.click();
   });
+}
+
+// Gasにデータ送信
+
+async function sendToGas(data) {
+  // GASのウェブアプリケーションのURL
+  const gasWebAppUrl =
+    "https://script.google.com/a/macros/pres.world/s/AKfycbxV1O6FHmtVXJFz8q_TzPoQImD1tkVRQZOEEtCBeP_N_osU4zRrbMysyVibjSaznldf/exec";
+
+  let researcherData = data;
+
+  if (researcherData) {
+    // Fetch API を使ってPOSTリクエストを送信
+    fetch(gasWebAppUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/tab-separated-values; charset=utf-8",
+      },
+      body: researcherData,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Success:", data);
+        chrome.runtime.sendMessage({
+          status: "転記成功: " + JSON.stringify(data),
+        });
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        chrome.runtime.sendMessage({ status: "転記エラー: " + error.message });
+      });
+  }
 }
