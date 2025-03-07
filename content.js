@@ -519,10 +519,13 @@ async function saveAllResearchersData() {
 
   let allResearchersData = [];
 
+
   for (const link of targetLinks) {
+    await new Promise((resolve) => setTimeout(resolve, 0)); // 3秒待機
+
     if (link) {
       try {
-		
+
         const response = await fetch(link);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -593,8 +596,12 @@ async function saveAllResearchersData() {
 
   // 4. ヘッダー行とデータ行を結合してTSVデータを作成
   const tsvData = [header, ...tsvRows].join("\n");
-  sendToGas(tsvData);
+  if (allResearchersData) {
+    // background.js にデータを送信
+	console.log("JSON.stringify(allResearchersData)");
+    chrome.runtime.sendMessage({action: "sendToGAS", data: JSON.stringify(allResearchersData)});
 
+}
   // 5. TSVデータをBlobオブジェクトに変換
   const blob = new Blob([tsvData], {
     type: "text/tab-separated-values;charset=utf-8;",
@@ -623,41 +630,4 @@ function clickAllBtnClear() {
   buttons.forEach((button) => {
     button.click();
   });
-}
-
-// Gasにデータ送信
-
-async function sendToGas(data) {
-  // GASのウェブアプリケーションのURL
-  const gasWebAppUrl =
-    "https://script.google.com/a/macros/pres.world/s/AKfycbxV1O6FHmtVXJFz8q_TzPoQImD1tkVRQZOEEtCBeP_N_osU4zRrbMysyVibjSaznldf/exec";
-
-  let researcherData = data;
-
-  if (researcherData) {
-    // Fetch API を使ってPOSTリクエストを送信
-    fetch(gasWebAppUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/tab-separated-values; charset=utf-8",
-      },
-      body: researcherData,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Success:", data);
-        chrome.runtime.sendMessage({
-          status: "転記成功: " + JSON.stringify(data),
-        });
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        chrome.runtime.sendMessage({ status: "転記エラー: " + error.message });
-      });
-  }
 }

@@ -8,7 +8,9 @@
         "activeTab",
         "scripting"
     ],
-
+	"host_permissions": [
+		"https://script.google.com/*"
+	  ],
 	"content_scripts": [
 	  {
 		"matches": ["https://jglobal.jst.go.jp/search/*"],
@@ -18,6 +20,8 @@
 		"matches": ["https://jglobal.jst.go.jp/bookmark*"],
 		"js": ["content.js"]
 	  }
-	]
-
+	],
+	"background": {
+		"service_worker": "background.js"
+	  }
   }
