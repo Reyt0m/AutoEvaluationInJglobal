@@ -8,9 +8,9 @@ async function main() {
   async function jsLoaded() {
     if (document.querySelector("div.listbox_title > a, .t_105") != null) {
       clearInterval(jsInitCheckTimer);
-
       await processResearcherList();
       createSaveButton();
+	  sessionStorage.getItem("nextPage") == "true" ? saveAllResearchersData() : null;
     }
   }
 }
@@ -519,13 +519,11 @@ async function saveAllResearchersData() {
 
   let allResearchersData = [];
 
-
   for (const link of targetLinks) {
     await new Promise((resolve) => setTimeout(resolve, 0)); // 3秒待機
 
     if (link) {
       try {
-
         const response = await fetch(link);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -561,7 +559,7 @@ async function saveAllResearchersData() {
   }
 
   // セッションストレージに保存
-  sessionStorage.setItem("saving", JSON.stringify(allResearchersData));
+  //   sessionStorage.setItem("saving", JSON.stringify(allResearchersData));
 
   // コンソールにデータを出力
   console.log("保存されたデータ:", allResearchersData);
@@ -574,60 +572,130 @@ async function saveAllResearchersData() {
   }
 
   // 2. TSVのヘッダー行を作成
-  const header = Object.keys(allResearchersData[0]).join("\t"); // タブで区切る
+  //   const header = Object.keys(allResearchersData[0]).join("\t"); // タブで区切る
 
-  // 3. TSVのデータ行を作成
-  const tsvRows = allResearchersData.map(
-    (researcher) =>
-      Object.values(researcher)
-        .map((value) => {
-          // 配列の場合は要素を"|"で結合
-          if (Array.isArray(value)) {
-            return `"${value.join("|")}"`;
-          } else if (typeof value === "string") {
-            // 文字列の場合はエスケープ処理（タブをスペースに置き換え）
-            return `"${value.replace(/"/g, '""').replace(/\t/g, " ")}"`;
-          } else {
-            return value;
-          }
-        })
-        .join("\t") // タブで区切る
-  );
+  //   // 3. TSVのデータ行を作成
+  //   const tsvRows = allResearchersData.map(
+  //     (researcher) =>
+  //       Object.values(researcher)
+  //         .map((value) => {
+  //           // 配列の場合は要素を"|"で結合
+  //           if (Array.isArray(value)) {
+  //             return `"${value.join("|")}"`;
+  //           } else if (typeof value === "string") {
+  //             // 文字列の場合はエスケープ処理（タブをスペースに置き換え）
+  //             return `"${value.replace(/"/g, '""').replace(/\t/g, " ")}"`;
+  //           } else {
+  //             return value;
+  //           }
+  //         })
+  //         .join("\t") // タブで区切る
+  //   );
 
   // 4. ヘッダー行とデータ行を結合してTSVデータを作成
-  const tsvData = [header, ...tsvRows].join("\n");
+  //   const tsvData = [header, ...tsvRows].join("\n");
   if (allResearchersData) {
     // background.js にデータを送信
-	console.log("JSON.stringify(allResearchersData)");
-    chrome.runtime.sendMessage({action: "sendToGAS", data: JSON.stringify(allResearchersData)});
-
-}
-  // 5. TSVデータをBlobオブジェクトに変換
-  const blob = new Blob([tsvData], {
-    type: "text/tab-separated-values;charset=utf-8;",
-  });
+    console.log("JSON.stringify(allResearchersData)");
+    chrome.runtime.sendMessage({
+      action: "sendToGAS",
+      data: JSON.stringify(allResearchersData),
+    });
+  }
+  //   // 5. TSVデータをBlobオブジェクトに変換
+  //   const blob = new Blob([tsvData], {
+  //     type: "text/tab-separated-values;charset=utf-8;",
+  //   });
 
   // 6. Blobオブジェクトからダウンロード用のURLを作成
-  const url = URL.createObjectURL(blob);
+  //   const url = URL.createObjectURL(blob);
 
-  // 7. リンク要素を作成してダウンロードを実行
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", "researchers_data.tsv"); // ダウンロードするファイル名を指定
-  document.body.appendChild(link);
-  link.click();
+  //   // 7. リンク要素を作成してダウンロードを実行
+  //   const link = document.createElement("a");
+  //   link.href = url;
+  //   link.setAttribute("download", "researchers_data.tsv"); // ダウンロードするファイル名を指定
+  //   document.body.appendChild(link);
+  //   link.click();
 
-  // 8. 作成したリンク要素とURLを削除
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-//   if (confirm("このページのクリップを削除してもよいですか?")) {
-//     clickAllBtnClear();
-//   }
+  //   // 8. 作成したリンク要素とURLを削除
+  //   document.body.removeChild(link);
+  //   URL.revokeObjectURL(url);
+  //   if (confirm("このページのクリップを削除してもよいですか?")) {
+  //     clickAllBtnClear();
+  //   }
+  if (checkFinalPage() == false) {
+	console.log("次ページに移動");
+	sessionStorage.setItem("nextPage", true);
+	goToNextPage();
+  } else {
+	console.log("最終ページ");
+	alert("最終ページです");
+	sessionStorage.clear();
+  }
+
 }
+
+// 最終ページかどうかを判定する関数
+function checkFinalPage() {
+	const pagination = document.querySelector(".pagination");
+	if (!pagination) {
+	  console.error("Pagination element not found.");
+	  return false; // または例外を投げるなど、適切なエラー処理
+	}
+
+	const lastLi = pagination.querySelector("li:nth-last-child(1)");
+	if (!lastLi) {
+	  console.error("Last <li> element not found.");
+	  return false; // または例外を投げるなど
+	}
+
+	// getComputedStyle を使用して、最終的に適用されているスタイルを取得
+	const computedStyle = window.getComputedStyle(lastLi);
+	const pointerEventsValue = computedStyle.getPropertyValue('pointer-events');
+
+	// pointer-events が none であれば true (最終ページ)、そうでなければ false を返す
+	return pointerEventsValue == 'none';
+  }
+
+// ページ番号を変更してURLを更新
+function goToNextPage() {
+  const currentPage = getCurrentPage();
+  const nextPage = currentPage + 1;
+  const pageNumber = nextPage;
+  const params = getSearchParams();
+  if (params) {
+    params.page = pageNumber;
+    const newHash = encodeURIComponent(JSON.stringify(params));
+    window.location.hash = newHash; // ハッシュを変更することでページ遷移
+  }
+}
+// 現在のページ番号を取得
+function getCurrentPage() {
+  const params = getSearchParams();
+  if (params && params.page) {
+    return parseInt(params.page, 10);
+  } else {
+    return 1; //デフォルトは1ページ目
+  }
+}
+
+// 次のページに遷移する関数
+// 現在のURLからハッシュフラグメントを取得し、JSONとしてパース
+function getSearchParams() {
+  try {
+    const hash = window.location.hash.substring(1); // '#' を削除
+    const decodedHash = decodeURIComponent(hash);
+    return JSON.parse(decodedHash);
+  } catch (error) {
+    console.error("Error parsing URL hash:", error);
+    return null;
+  }
+}
+
 // すべての btn_clear をクリックする関数
-function clickAllBtnClear() {
-  const buttons = document.querySelectorAll("button.btn_clear");
-  buttons.forEach((button) => {
-    button.click();
-  });
-}
+// function clickAllBtnClear() {
+//   const buttons = document.querySelectorAll("button.btn_clear");
+//   buttons.forEach((button) => {
+//     button.click();
+//   });
+// }
