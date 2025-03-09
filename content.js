@@ -194,6 +194,7 @@ function checkRecentYears(result) {
     currentYear - 1,
     currentYear - 2,
     currentYear - 3,
+    currentYear - 4,
   ]; // 現在から過去3年
   const output = {
     競争的資金等の研究課題: false,
