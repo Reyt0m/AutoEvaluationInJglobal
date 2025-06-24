@@ -27,14 +27,12 @@ async function processResearcherList() {
   );
 
   const promises = targetLinks.map(async (link, index) => {
-    // console.log(researcherName)
     let researcherName = link.href;
     link = link.href;
     const url = new URL(link);
     const searchParams = new URLSearchParams(url.search);
     researcherName = searchParams.get("JGLOBAL_ID");
 
-    // listboxTitle を取得し、存在しない場合はエラー処理
     let listboxTitle =
       document.querySelectorAll("div.listbox_info1")[index] ||
       document.querySelectorAll("div.box1 > table > tbody > tr")[index + 1];
@@ -44,18 +42,15 @@ async function processResearcherList() {
       return;
     }
 
-    // 詳細ボタン、詳細情報コンテナ、コメントエリアを作成
     const toggleButton = createToggleButton(index);
     const displayDiv = createDisplayDiv(researcherName);
     const detailsDiv = createDetailsContainer();
     const commentTextArea = createCommentTextArea(researcherName);
 
-    // 詳細情報の取得と表示
     if (link) {
       result = await fetchAndDisplayDetails(link, detailsDiv, displayDiv);
       if (result) {
         const recentYears = checkRecentYears(result);
-        // 3 years以内に競争的資金等の研究課題、論文が存在しない場合は削除
         if (!recentYears["競争的資金等の研究課題"] && !recentYears["論文"]) {
           listboxTitle.parentElement.parentElement.remove();
         }
@@ -64,15 +59,6 @@ async function processResearcherList() {
       console.error("リンクが取得できませんでした。");
       detailsDiv.textContent = "詳細情報の取得に失敗しました。";
     }
-
-    // 要素の追加
-    // appendElements(
-    //   listboxTitle,
-    //   displayDiv,
-    //   detailsDiv,
-    //   toggleButton,
-    //   commentTextArea
-    // );
     // appendElements(listboxTitle, detailsDiv, commentTextArea);
   });
 
@@ -82,7 +68,6 @@ async function processResearcherList() {
 // 詳細ボタンを作成する関数
 function createToggleButton(index) {
   const toggleButton = document.createElement("button");
-  // toggleButton.textContent = `詳細 ${index + 1}`;
   toggleButton.textContent = `開閉`;
   toggleButton.style.marginBottom = "10px";
   toggleButton.addEventListener("click", toggleDetails);
@@ -148,14 +133,12 @@ async function fetchAndDisplayDetails(link, detailsDiv, displayDiv) {
     return result;
   } catch (error) {
     console.error(`リンク ${link} の取得に失敗しました:`, error);
-    // detailsDiv.textContent = "詳細情報の取得に失敗しました。";
     return (displayDiv.textContent = "詳細情報の取得に失敗しました。");
   }
 }
 
 // 研究者の詳細情報を抽出する関数
 function extractResearcherDetails(doc, link) {
-  //   link = link.substring(0, link.indexOf("&"));
   const result = {
     "J-GLOBAL ID": extractTextContent(doc, ".info_number"),
     名前: extractTextContent(doc, ".search_detail_topbox_title"),
@@ -166,12 +149,12 @@ function extractResearcherDetails(doc, link) {
     研究分野: extractTextContentFromLinks(
       doc.querySelector(".indent_2line-1em")
     ),
-    研究キーワード: extractKeywords(doc), // 修正
+    研究キーワード: extractKeywords(doc),
     論文: extractListItemsAfterSpan(doc, "論文"),
     "講演・口頭発表等": extractListItemsAfterSpan(doc, "講演・口頭発表等"),
     学歴: extractListItemsAfterSpan(doc, "学歴"),
     学位: extractListItemsAfterSpan(doc, "学位"),
-    Works: [], // 必要に応じて取得処理を追加
+    Works: [],
     競争的資金等の研究課題: extractListItemsAfterSpan(
       doc,
       "競争的資金等の研究課題"
@@ -195,26 +178,24 @@ function checkRecentYears(result) {
     currentYear - 2,
     currentYear - 3,
     currentYear - 4,
-  ]; // 現在から過去3年
+  ];
   const output = {
     競争的資金等の研究課題: false,
     論文: false,
   };
 
-  // 競争的資金等の研究課題
   if (
     result.競争的資金等の研究課題 &&
     result.競争的資金等の研究課題.length > 0
   ) {
-    const fundingText = result.競争的資金等の研究課題.join(" "); // 配列を文字列に結合
+    const fundingText = result.競争的資金等の研究課題.join(" ");
     output["競争的資金等の研究課題"] = targetYears.some((year) =>
       fundingText.includes(year.toString())
     );
   }
 
-  // 論文
   if (result.論文 && result.論文.length > 0) {
-    const paperText = result.論文.join(" "); // 配列を文字列に結合
+    const paperText = result.論文.join(" ");
     output["論文"] = targetYears.some((year) =>
       paperText.includes(year.toString())
     );
@@ -235,35 +216,30 @@ function removeQueryStringAndFragment(url) {
   return url;
 }
 
-// 研究キーワードを取得する関数
 function extractKeywords(doc) {
   const spanElement = Array.from(
     doc.querySelectorAll("span.detail_item_title")
   ).find((span) => span.textContent.includes("研究キーワード"));
 
   if (!spanElement) {
-    // console.error("研究キーワードを含むspanが見つかりませんでした");
     return [];
   }
 
   const divElement = spanElement.closest("div.indent_2line-1em");
   if (!divElement) {
-    console.error("spanを包含するdivが見つかりませんでした");
     return [];
   }
 
-  // 子ノードをすべて取得し、テキストノードのみを抽出
   const textNodes = Array.from(divElement.childNodes)
     .filter(
       (node) =>
         node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== ""
     )
-    .map((node) => node.textContent.trim().replace(/[\t\n,]/g, "")); // タブ、改行、カンマを削除
+    .map((node) => node.textContent.trim().replace(/[\t\n,]/g, ""));
 
   return textNodes;
 }
 
-// リンク要素からテキストコンテンツを抽出する関数（変更なし）
 function extractTextContentFromLinks(container) {
   if (!container) return [];
   return Array.from(container.querySelectorAll("a"))
@@ -277,35 +253,27 @@ function extractTextContentFromLinks(container) {
     .filter((item) => item !== "");
 }
 
-// 特定のspanの後のbrの次のdivの中のulのリスト項目を抽出するヘルパー関数（変更なし）
 function extractListItemsAfterSpan(doc, spanStartText) {
   const spanElement = Array.from(
     doc.querySelectorAll("span.detail_item_title")
   ).find((span) => span.textContent.trim().startsWith(spanStartText));
 
   if (!spanElement) {
-    // console.error(
-    //   `指定されたテキストで始まるspanが見つかりませんでした:`,
-    //   spanStartText
-    // );
     return [];
   }
 
   const brElement = spanElement.nextElementSibling;
   if (!brElement || brElement.tagName !== "BR") {
-    console.error("spanの次の要素がbrタグではありません");
     return [];
   }
 
   const divElement = brElement.nextElementSibling;
   if (!divElement || divElement.tagName !== "DIV") {
-    console.error("brタグの次の要素がdivタグではありません");
     return [];
   }
 
   const ulElement = divElement.querySelector("ul");
   if (!ulElement) {
-    console.error("divの中のulが見つかりませんでした");
     return [];
   }
 
@@ -314,63 +282,49 @@ function extractListItemsAfterSpan(doc, spanStartText) {
   );
 }
 
-// 特定のテキストを含むspanタグの次のaタグのhref属性を抽出するヘルパー関数（変更なし）
 function extractHrefAfterSpan(doc, spanText) {
   const spanElement = Array.from(doc.querySelectorAll("span")).find((span) =>
     span.textContent.includes(spanText)
   );
 
   if (!spanElement) {
-    // console.error(
-    //   `指定されたテキストを含むspanが見つかりませんでした:`,
-    //   spanText
-    // );
     return "情報なし";
   }
 
   const aElement = spanElement.nextElementSibling;
   if (!aElement || aElement.tagName !== "A") {
-    console.error("spanの次の要素がaタグではありません");
     return "情報なし";
   }
 
   return aElement.href;
 }
 
-// 特定のspanタグの後のbrタグの次のdivタグのテキスト内容を抽出する関数
 function extractTextFromDivAfterSpanAndBr(doc, spanStartText) {
   const spanElement = Array.from(
     doc.querySelectorAll("span.detail_item_title")
   ).find((span) => span.textContent.trim().startsWith(spanStartText));
 
   if (!spanElement) {
-    // console.error(
-    //   `指定されたテキストで始まるspanが見つかりませんでした:`,
-    //   spanStartText
-    // );
     return "情報なし";
   }
 
   const brElement = spanElement.nextElementSibling;
   if (!brElement || brElement.tagName !== "BR") {
-    console.error("spanの次の要素がbrタグではありません");
     return "情報なし";
   }
 
   const divElement = brElement.nextElementSibling;
   if (!divElement || divElement.tagName !== "DIV") {
-    console.error("brタグの次の要素がdivタグではありません");
     return "情報なし";
   }
 
   return divElement.textContent.trim().replace(/[\t\n]/g, "");
 }
-// テキストコンテンツを抽出するヘルパー関数
+
 function extractTextContent(doc, selector) {
   return doc.querySelector(selector)?.textContent.trim() || "情報なし";
 }
 
-// 所属機関・部署を抽出するヘルパー関数
 function extractAffiliation(doc) {
   let affiliation =
     doc.querySelector(".js_tooltip_search")?.textContent.trim() || "情報なし";
@@ -381,7 +335,6 @@ function extractAffiliation(doc) {
   return affiliation;
 }
 
-// 職名を抽出するヘルパー関数
 function extractJobTitle(doc) {
   const element = doc.querySelector(
     "#detail_v > div.contents > div > div.contents_in_main > div > span:nth-child(5)"
@@ -389,27 +342,12 @@ function extractJobTitle(doc) {
   return element?.nextSibling?.textContent.trim() || "情報なし";
 }
 
-// リスト項目を抽出するヘルパー関数
 function extractListItems(doc, selector) {
   return Array.from(doc.querySelectorAll(selector)).map((item) =>
     item.textContent.trim()
   );
 }
 
-// リンク要素からテキストコンテンツを抽出する関数
-function extractTextContentFromLinks(container) {
-  if (!container) return [];
-  return Array.from(container.querySelectorAll("a"))
-    .map((aElement) => {
-      let previousNode = aElement.previousSibling;
-      while (previousNode && previousNode.nodeType !== Node.TEXT_NODE) {
-        previousNode = previousNode.previousSibling;
-      }
-      return previousNode ? previousNode.textContent.trim() : "";
-    })
-    .filter((item) => item !== "");
-}
-// デフォルト情報を表示する関数
 function displayDefaultDetails(result, detailsDiv) {
   result = {
     競争的資金等の研究課題: result.競争的資金等の研究課題,
@@ -425,7 +363,6 @@ function displayDefaultDetails(result, detailsDiv) {
   }
 }
 
-// 詳細情報を表示する関数
 function displayDetails(result, detailsDiv) {
   result = {
     URL: result.URL,
@@ -448,7 +385,6 @@ function displayDetails(result, detailsDiv) {
   }
 }
 
-// localStorage からデータを読み込む関数
 function loadFromLocalStorage(researcherName) {
   const researchers = JSON.parse(localStorage.getItem("Researchers")) || [];
   const researcherData = researchers.find(
@@ -457,7 +393,6 @@ function loadFromLocalStorage(researcherName) {
   return researcherData ? researcherData.data : null;
 }
 
-// localStorage にデータを保存する関数
 function saveToLocalStorage(researcherName, data) {
   const researchers = JSON.parse(localStorage.getItem("Researchers")) || [];
   const seenNames = new Set();
@@ -481,23 +416,32 @@ function saveToLocalStorage(researcherName, data) {
   localStorage.setItem("Researchers", JSON.stringify(uniqueResearchers));
 }
 
-// 要素を追加する関数
 function appendElements(parent, ...elements) {
   elements.forEach((element) => {
     parent.appendChild(element);
   });
 }
 
-// 「全ページを保存」ボタンを作成する関数
+// --------------------------------------------------
+// ▼▼▼ ここからマージ＆変更されたコード ▼▼▼
+// --------------------------------------------------
+
+/**
+ * 「全ページを保存」ボタンを作成する関数 (変更後)
+ */
 async function createSaveButton() {
   const saveButton = document.createElement("button");
   saveButton.textContent = "全ページを保存";
   saveButton.style.marginBottom = "10px";
 
   saveButton.addEventListener("click", async () => {
+    // 処理開始時にカウンターとデータ保存領域を初期化する
+    sessionStorage.setItem('processedPageCount', '0');
+    sessionStorage.setItem('accumulatedData', '[]');
+
     // すべての研究者情報を取得して保存
     await saveAllResearchersData();
-    console.log("保存処理を実行");
+    console.log("保存処理を開始");
   });
 
   const targetContainer = document.querySelector("div.box1,.contents_in_main");
@@ -508,7 +452,9 @@ async function createSaveButton() {
   }
 }
 
-// すべての研究者情報を取得して保存する関数
+/**
+ * すべての研究者情報を取得して保存する関数 (変更後)
+ */
 async function saveAllResearchersData() {
   const targetLinks = Array.from(
     document.querySelectorAll("div.listbox_title > a, .t_105")
@@ -518,10 +464,10 @@ async function saveAllResearchersData() {
       : element.closest(".listbox_info1")?.querySelector("a")?.href
   );
 
-  let allResearchersData = [];
+  let currentPageData = []; // このページのデータのみを一時的に保持
 
   for (const link of targetLinks) {
-    await new Promise((resolve) => setTimeout(resolve, 0)); // 3秒待機
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     if (link) {
       try {
@@ -532,14 +478,8 @@ async function saveAllResearchersData() {
         const html = await response.text();
         const doc = new DOMParser().parseFromString(html, "text/html");
         const researcherData = extractResearcherDetails(doc, link);
-        const url = new URL(link);
-        const searchParams = new URLSearchParams(url.search);
-        researcherName = searchParams.get("JGLOBAL_ID");
-        // コメントを取得して研究者データに追加
-        // const savedData = loadFromLocalStorage(researcherName) || {};
-        // researcherData["コメント"] = savedData["コメント"] || "";
 
-        // タブ文字と改行文字を削除する処理を追加
+        // タブ文字と改行文字を削除する処理
         for (const key in researcherData) {
           if (typeof researcherData[key] === "string") {
             researcherData[key] = researcherData[key].replace(/[\t\n]/g, "");
@@ -550,7 +490,7 @@ async function saveAllResearchersData() {
           }
         }
 
-        allResearchersData.push(researcherData);
+        currentPageData.push(researcherData);
       } catch (error) {
         console.error(`リンク ${link} の取得に失敗しました:`, error);
       }
@@ -559,104 +499,75 @@ async function saveAllResearchersData() {
     }
   }
 
-  // セッションストレージに保存
-  //   sessionStorage.setItem("saving", JSON.stringify(allResearchersData));
+  // 1. 蓄積データとページカウンターをsessionStorageから読み込む
+  let accumulatedData = JSON.parse(sessionStorage.getItem('accumulatedData') || '[]');
+  let processedPageCount = parseInt(sessionStorage.getItem('processedPageCount') || '0');
 
-  // コンソールにデータを出力
-  console.log("保存されたデータ:", allResearchersData);
-  // 1. sessionStorageからデータを取得
-  //   const allResearchersData = JSON.parse(sessionStorage.getItem("saving"));
+  // 2. 現在のページのデータを蓄積データに追加
+  accumulatedData.push(...currentPageData);
+  processedPageCount++;
 
-  if (!allResearchersData || allResearchersData.length === 0) {
-    console.error("保存されたデータが見つかりません");
-    return;
+  // 3. 更新されたデータをsessionStorageに保存
+  sessionStorage.setItem('accumulatedData', JSON.stringify(accumulatedData));
+  sessionStorage.setItem('processedPageCount', processedPageCount.toString());
+
+  console.log(`ページ ${processedPageCount} の処理完了。現在 ${accumulatedData.length} 件のデータを蓄積中。`);
+
+  const isFinalPage = checkFinalPage();
+
+  // 4. データを送信する条件をチェック (5ページごと、または最終ページの場合)
+  if ((processedPageCount % 5 === 0) || isFinalPage) {
+    console.log(`送信条件を満たしました (${processedPageCount}ページ経過、または最終ページ)。データをバックグラウンドに送信します。`);
+
+    if (accumulatedData.length > 0) {
+      // background.js にデータを送信
+      chrome.runtime.sendMessage({
+        action: "sendToGAS",
+        data: JSON.stringify(accumulatedData),
+      });
+      // 送信後、蓄積データをリセット
+      sessionStorage.setItem('accumulatedData', '[]');
+      console.log('データの送信が完了し、蓄積データをリセットしました。');
+    }
   }
 
-  // 2. TSVのヘッダー行を作成
-  //   const header = Object.keys(allResearchersData[0]).join("\t"); // タブで区切る
-
-  //   // 3. TSVのデータ行を作成
-  //   const tsvRows = allResearchersData.map(
-  //     (researcher) =>
-  //       Object.values(researcher)
-  //         .map((value) => {
-  //           // 配列の場合は要素を"|"で結合
-  //           if (Array.isArray(value)) {
-  //             return `"${value.join("|")}"`;
-  //           } else if (typeof value === "string") {
-  //             // 文字列の場合はエスケープ処理（タブをスペースに置き換え）
-  //             return `"${value.replace(/"/g, '""').replace(/\t/g, " ")}"`;
-  //           } else {
-  //             return value;
-  //           }
-  //         })
-  //         .join("\t") // タブで区切る
-  //   );
-
-  // 4. ヘッダー行とデータ行を結合してTSVデータを作成
-  //   const tsvData = [header, ...tsvRows].join("\n");
-  if (allResearchersData) {
-    // background.js にデータを送信
-    console.log("JSON.stringify(allResearchersData)");
-    chrome.runtime.sendMessage({
-      action: "sendToGAS",
-      data: JSON.stringify(allResearchersData),
-    });
-  }
-  //   // 5. TSVデータをBlobオブジェクトに変換
-  //   const blob = new Blob([tsvData], {
-  //     type: "text/tab-separated-values;charset=utf-8;",
-  //   });
-
-  // 6. Blobオブジェクトからダウンロード用のURLを作成
-  //   const url = URL.createObjectURL(blob);
-
-  //   // 7. リンク要素を作成してダウンロードを実行
-  //   const link = document.createElement("a");
-  //   link.href = url;
-  //   link.setAttribute("download", "researchers_data.tsv"); // ダウンロードするファイル名を指定
-  //   document.body.appendChild(link);
-  //   link.click();
-
-  //   // 8. 作成したリンク要素とURLを削除
-  //   document.body.removeChild(link);
-  //   URL.revokeObjectURL(url);
-  //   if (confirm("このページのクリップを削除してもよいですか?")) {
-  //     clickAllBtnClear();
-  //   }
-  if (checkFinalPage() == false) {
-	console.log("次ページに移動");
-	sessionStorage.setItem("nextPage", true);
-	goToNextPage();
+  // 5. ページ遷移の処理
+  if (!isFinalPage) {
+    console.log("次ページに移動");
+    sessionStorage.setItem("nextPage", true);
+    goToNextPage();
   } else {
-	console.log("最終ページ");
-	alert("最終ページです");
-	sessionStorage.clear();
+    console.log("最終ページです。すべての処理が完了しました。");
+    alert("最終ページです");
+    // 全ての処理が終わったらストレージをきれいにする
+    sessionStorage.clear();
   }
-
 }
+
+// --------------------------------------------------
+// ▲▲▲ ここまでがマージ＆変更されたコード ▲▲▲
+// --------------------------------------------------
+
 
 // 最終ページかどうかを判定する関数
 function checkFinalPage() {
 	const pagination = document.querySelector(".pagination");
 	if (!pagination) {
 	  console.error("Pagination element not found.");
-	  return false; // または例外を投げるなど、適切なエラー処理
+	  return false;
 	}
 
 	const lastLi = pagination.querySelector("li:nth-last-child(1)");
 	if (!lastLi) {
 	  console.error("Last <li> element not found.");
-	  return false; // または例外を投げるなど
+	  return false;
 	}
 
-	// getComputedStyle を使用して、最終的に適用されているスタイルを取得
 	const computedStyle = window.getComputedStyle(lastLi);
 	const pointerEventsValue = computedStyle.getPropertyValue('pointer-events');
 
-	// pointer-events が none であれば true (最終ページ)、そうでなければ false を返す
 	return pointerEventsValue == 'none';
-  }
+}
 
 // ページ番号を変更してURLを更新
 function goToNextPage() {
@@ -670,6 +581,7 @@ function goToNextPage() {
     window.location.hash = newHash; // ハッシュを変更することでページ遷移
   }
 }
+
 // 現在のページ番号を取得
 function getCurrentPage() {
   const params = getSearchParams();
@@ -680,7 +592,6 @@ function getCurrentPage() {
   }
 }
 
-// 次のページに遷移する関数
 // 現在のURLからハッシュフラグメントを取得し、JSONとしてパース
 function getSearchParams() {
   try {
@@ -692,11 +603,3 @@ function getSearchParams() {
     return null;
   }
 }
-
-// すべての btn_clear をクリックする関数
-// function clickAllBtnClear() {
-//   const buttons = document.querySelectorAll("button.btn_clear");
-//   buttons.forEach((button) => {
-//     button.click();
-//   });
-// }
