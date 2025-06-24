@@ -435,9 +435,8 @@ async function createSaveButton() {
   saveButton.style.marginBottom = "10px";
 
   saveButton.addEventListener("click", async () => {
-    // 処理開始時にカウンターとデータ保存領域を初期化する
+    // 処理開始時にページカウンターを初期化する
     sessionStorage.setItem('processedPageCount', '0');
-    sessionStorage.setItem('accumulatedData', '[]');
 
     // すべての研究者情報を取得して保存
     await saveAllResearchersData();
@@ -500,34 +499,41 @@ async function saveAllResearchersData() {
   }
 
   // 1. 蓄積データとページカウンターをsessionStorageから読み込む
-  let accumulatedData = JSON.parse(sessionStorage.getItem('accumulatedData') || '[]');
   let processedPageCount = parseInt(sessionStorage.getItem('processedPageCount') || '0');
 
-  // 2. 現在のページのデータを蓄積データに追加
-  accumulatedData.push(...currentPageData);
+  // 2. ページカウンターを更新
   processedPageCount++;
 
-  // 3. 更新されたデータをsessionStorageに保存
-  sessionStorage.setItem('accumulatedData', JSON.stringify(accumulatedData));
+  // 3. 更新されたページカウンターをsessionStorageに保存
   sessionStorage.setItem('processedPageCount', processedPageCount.toString());
 
-  console.log(`ページ ${processedPageCount} の処理完了。現在 ${accumulatedData.length} 件のデータを蓄積中。`);
+  console.log(`ページ ${processedPageCount} の処理完了。`);
 
   const isFinalPage = checkFinalPage();
 
-  // 4. データを送信する条件をチェック (5ページごと、または最終ページの場合)
-  if ((processedPageCount % 5 === 0) || isFinalPage) {
-    console.log(`送信条件を満たしました (${processedPageCount}ページ経過、または最終ページ)。データをバックグラウンドに送信します。`);
+  // 4. データを送信する条件をチェック (1ページごと、または最終ページの場合)
+  if (isFinalPage) {
+    console.log(`最終ページです。データをバックグラウンドに送信します。`);
 
-    if (accumulatedData.length > 0) {
+    if (currentPageData.length > 0) {
       // background.js にデータを送信
       chrome.runtime.sendMessage({
         action: "sendToGAS",
-        data: JSON.stringify(accumulatedData),
+        data: JSON.stringify(currentPageData),
       });
-      // 送信後、蓄積データをリセット
-      sessionStorage.setItem('accumulatedData', '[]');
-      console.log('データの送信が完了し、蓄積データをリセットしました。');
+      console.log('データの送信が完了しました。');
+    }
+  } else {
+    // 最終ページでない場合は毎回送信
+    console.log(`ページ ${processedPageCount} のデータをバックグラウンドに送信します。`);
+
+    if (currentPageData.length > 0) {
+      // background.js にデータを送信
+      chrome.runtime.sendMessage({
+        action: "sendToGAS",
+        data: JSON.stringify(currentPageData),
+      });
+      console.log('データの送信が完了しました。');
     }
   }
 

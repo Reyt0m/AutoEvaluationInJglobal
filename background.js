@@ -8,7 +8,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 	console.log("データ送信", sendData); // ログを追加
     // Gasにデータ送信
     const gasWebAppUrl =
-      "https://script.google.com/macros/s/AKfycbxhHyglgUmsmxz9O9ErH75FEGZ8ZOxYpbK3aCj2zd9X8LBQG30t3Hfa95f7i-2dmk6XXw/exec";
+      "https://script.google.com/macros/s/AKfycbwVPARkQhiATS9FDDofa1uIFZ78FXFXI7kll-nfiHDxkNm6nIAqARv-t2albmyOx3EGUQ/exec";
 
 
 
